@@ -1,9 +1,11 @@
 using ECM2;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
-public class TopdownCameraController : MonoBehaviour
+public class PlayerInputController : MonoBehaviour
 {
 
     protected Character _character;
@@ -18,15 +20,17 @@ public class TopdownCameraController : MonoBehaviour
 
     protected virtual void Start() {
         Cursor.lockState = CursorLockMode.Locked;
+
+        InputManager.Instance.inputActions.Player.Crouch.started += OnCrouchPressed;
+        InputManager.Instance.inputActions.Player.Crouch.canceled += OnCrouchReleased;
+        InputManager.Instance.inputActions.Player.Jump.started += OnJumpPressed;
+        InputManager.Instance.inputActions.Player.Jump.canceled += OnJumpReleased;
     }
 
     protected virtual void Update() {
         // Movement input
 
-        Vector2 inputMove = new Vector2() {
-            x = Input.GetAxisRaw("Horizontal"),
-            y = Input.GetAxisRaw("Vertical")
-        };
+        Vector2 inputMove = InputManager.Instance.GetMovementInputVector();
 
         Vector3 movementDirection = Vector3.zero;
 
@@ -38,19 +42,18 @@ public class TopdownCameraController : MonoBehaviour
 
         _character.SetMovementDirection(movementDirection);
 
-        // Crouch input
-
-        if (Input.GetKeyDown(KeyCode.LeftControl) || Input.GetKeyDown(KeyCode.C))
-            _character.Crouch();
-        else if (Input.GetKeyUp(KeyCode.LeftControl) || Input.GetKeyUp(KeyCode.C))
-            _character.UnCrouch();
-
-        // Jump input
-
-        if (Input.GetButtonDown("Jump"))
-            _character.Jump();
-        else if (Input.GetButtonUp("Jump"))
-            _character.StopJumping();
-
     }
+    private void OnCrouchPressed(InputAction.CallbackContext context) {
+        _character.Crouch();
+    }
+    private void OnCrouchReleased(InputAction.CallbackContext context) {
+        _character.UnCrouch();
+    }
+    private void OnJumpPressed(InputAction.CallbackContext context) {
+        _character.Jump();
+    }
+    private void OnJumpReleased(InputAction.CallbackContext context) {
+        _character.StopJumping();
+    }
+
 }

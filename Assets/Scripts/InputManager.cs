@@ -17,4 +17,8 @@ public class InputManager : MonoBehaviour
         return inputActions.Player.Movement.ReadValue<Vector2>();
     }
 
+    public float GetCameraZoomInputDelta() {
+        return Mathf.Clamp(inputActions.Player.CameraZoom.ReadValue<float>(), -110f, 110f);
+    }
+
 }

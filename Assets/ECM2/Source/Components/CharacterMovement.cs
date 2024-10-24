@@ -373,7 +373,7 @@ namespace ECM2
 
     #endregion
 
-    [RequireComponent(typeof(Rigidbody), typeof(CapsuleCollider))]
+    [RequireComponent(typeof(Rigidbody), typeof(Collider))]
     public sealed class CharacterMovement : MonoBehaviour
     {
         #region ENUMS

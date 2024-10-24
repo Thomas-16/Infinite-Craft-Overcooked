@@ -31,7 +31,6 @@ public class PlayerAnimator : MonoBehaviour
 
         animator.SetBool("IsCrouched", character.IsCrouched());
     }
-    // TODO: MAKE JUMPING ANIMATION AND CROUCHING ANIMATION
     private void OnPlayerJumped() {
         animator.SetTrigger("Jump");
     }

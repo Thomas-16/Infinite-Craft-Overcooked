@@ -21,11 +21,11 @@ public class Player : MonoBehaviour
     private CinemachineVirtualCamera virtualCamera;
     private ConeCastHelper coneCastHelper;
 
-    [Header("Holding Object")]
+    [Header("References")]
     [SerializeField] private Transform holdingObjectTransform;
     [SerializeField] private Transform lookingRaycastPositionTransform;
 
-    [Header("Raycast")]
+    [Header("Raycast Settings")]
     [SerializeField] private bool debugVisualizeRays = true;
     [SerializeField] private float rayCastAngle = 25f;
     [SerializeField] private int numRaycastRays = 20;

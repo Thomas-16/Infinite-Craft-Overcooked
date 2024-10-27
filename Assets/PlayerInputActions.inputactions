@@ -51,9 +51,9 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "LaunchItem",
+                    "name": "Interact",
                     "type": "Button",
-                    "id": "d075b602-d2b5-4850-9991-41c36a5845ff",
+                    "id": "3f02875c-cb09-4b3d-b1f0-fe237ae6f9c9",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
@@ -217,23 +217,23 @@
                 },
                 {
                     "name": "",
-                    "id": "3dd0e147-76b8-4410-870a-b63c0b9adc34",
-                    "path": "<Keyboard>/r",
+                    "id": "7ad80dfa-e86b-4426-bc38-6c1fcc335dfc",
+                    "path": "<Keyboard>/f",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "LaunchItem",
+                    "action": "Interact",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
                 {
                     "name": "",
-                    "id": "9972d4e6-1025-479a-9fc9-ad1b18423099",
-                    "path": "<Gamepad>/rightShoulder",
+                    "id": "a182f918-afcc-4588-82b6-c6b3161ff9fe",
+                    "path": "<Gamepad>/buttonNorth",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "LaunchItem",
+                    "action": "Interact",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

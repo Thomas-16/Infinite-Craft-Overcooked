@@ -1,10 +1,10 @@
 using Cinemachine;
 using ECM2;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using static UnityEngine.UI.Image;
 
 public class Player : MonoBehaviour
 {
@@ -25,15 +25,23 @@ public class Player : MonoBehaviour
     [SerializeField] private Transform holdingObjectTransform;
     [SerializeField] private Transform lookingRaycastPositionTransform;
 
-    [Header("Raycast Settings")]
+    [Header("Settings")]
     [SerializeField] private bool debugVisualizeRays = true;
     [SerializeField] private float rayCastAngle = 25f;
     [SerializeField] private int numRaycastRays = 20;
     [SerializeField] private float raycastDistance = 1.25f;
+    [SerializeField] private float throwItemInputHoldThreshold = 0.4f;
+    [SerializeField] private float mergeItemsInputHoldThreshold = .75f;
 
     private PickupableObject hoveringObject;
     private PickupableObject pickedupObject;
     private bool isHoldingObject;
+    private float pickupInputStartTime;
+    private bool pickupInputActive = false;
+    private bool justPickedUp = false;
+
+    private float lastTriedToMergeTime;
+    private bool interactInputActive;
 
     protected virtual void Awake() {
         _character = GetComponent<Character>();
@@ -48,8 +56,6 @@ public class Player : MonoBehaviour
         InputManager.Instance.inputActions.Player.Crouch.canceled += OnCrouchReleased;
         InputManager.Instance.inputActions.Player.Jump.started += OnJumpPressed;
         InputManager.Instance.inputActions.Player.Jump.canceled += OnJumpReleased;
-        InputManager.Instance.inputActions.Player.Pickup.performed += OnPickupPressed;
-        InputManager.Instance.inputActions.Player.LaunchItem.performed += OnLaunchItemPressed;
     }
 
     protected virtual void Update() {
@@ -66,13 +72,81 @@ public class Player : MonoBehaviour
         _character.SetMovementDirection(movementDirection);
 
         HandleHoverObjects();
-
+        HandlePickupInput();
         HandleCameraZoom();
+        HandleInteractInput();
+    }
+
+    private void HandleInteractInput() {
+        if (InputManager.Instance.GetInteractPressed()) {
+            interactInputActive = true;
+            if(isHoldingObject && hoveringObject != null && pickedupObject is LLement && hoveringObject is LLement) {
+                lastTriedToMergeTime = Time.time;
+            }
+        }
+        if (interactInputActive) {
+            if (Time.time - lastTriedToMergeTime > mergeItemsInputHoldThreshold && isHoldingObject && hoveringObject != null && pickedupObject is LLement && hoveringObject is LLement) {
+                // merge items
+                interactInputActive = false;
+
+                GameManager.Instance.MergeElements(hoveringObject as LLement, pickedupObject as LLement);
+
+                isHoldingObject = false;
+                hoveringObject = null;
+                pickedupObject = null;
+            }
+        }
+        if(InputManager.Instance.GetInteractReleased()) {
+            interactInputActive = false;
+        }
+    }
+    private void HandlePickupInput() {
+        if (InputManager.Instance.GetPickupInput()) {
+            if (!pickupInputActive) {
+                // Pickup input has started
+                pickupInputActive = true;
+                pickupInputStartTime = Time.time;
+
+                // Pick up the object instantly if hovering over an object and not already holding one
+                if (hoveringObject != null && !isHoldingObject) {
+                    isHoldingObject = true;
+                    hoveringObject.GetComponent<Rigidbody>().isKinematic = true;
+                    hoveringObject.Pickup(this);
+                    pickedupObject = hoveringObject;
+                    justPickedUp = true;  // Set flag to prevent immediate drop
+                }
+            }
+            else if (isHoldingObject && !justPickedUp && Time.time - pickupInputStartTime >= throwItemInputHoldThreshold) {
+                // Throw the object immediately when the input is held for more than 0.5 seconds
+                isHoldingObject = false;
+                pickedupObject.Drop(this);
+                pickedupObject.GetComponent<Rigidbody>().AddExplosionForce(1500f, holdingObjectTransform.position - (transform.forward * 0.2f), 0.5f, 0.1f);
+                pickedupObject = null;
+
+                // Reset the input state so we don't throw multiple times on one long input
+                pickupInputActive = false;
+                justPickedUp = false;  // Reset the flag after throwing
+            }
+        }
+        else if (pickupInputActive) {
+            // Pickup input has ended
+            pickupInputActive = false;
+
+            // Drop the object if held for less than 0.5 seconds and it wasn't just picked up
+            if (isHoldingObject && !justPickedUp && Time.time - pickupInputStartTime < throwItemInputHoldThreshold) {
+                isHoldingObject = false;
+                pickedupObject.Drop(this);
+                pickedupObject = null;
+            }
+
+            // Reset the justPickedUp flag once the input ends
+            justPickedUp = false;
+        }
     }
     private void HandleHoverObjects() {
         //RaycastHit[] raycastHits = physics.ConeCastAll(lookingRaycastPositionTransform.position, 1.5f, transform.forward, 2f, 50f);
         RaycastHit[] raycastHits = coneCastHelper.ConeCast(lookingRaycastPositionTransform.position, transform.forward, raycastDistance);
-        if(debugVisualizeRays) {
+        if (debugVisualizeRays) {
             foreach (var hit in raycastHits) {
                 Debug.DrawLine(lookingRaycastPositionTransform.position, hit.point, Color.red);
             }
@@ -87,30 +161,6 @@ public class Player : MonoBehaviour
             }
         }
         hoveringObject = null;
-    }
-
-    private void OnPickupPressed(InputAction.CallbackContext context) {
-        if (hoveringObject != null && !isHoldingObject) {
-            isHoldingObject = true;
-            hoveringObject.GetComponent<Rigidbody>().isKinematic = true;
-            hoveringObject.Pickup(this);
-            pickedupObject = hoveringObject;
-        }
-        else if (isHoldingObject) {
-            isHoldingObject = false;
-            pickedupObject.Drop(this);
-            pickedupObject.GetComponent<Rigidbody>().isKinematic = false;
-            pickedupObject = null;
-        }
-    }
-    private void OnLaunchItemPressed(InputAction.CallbackContext context) {
-        if(isHoldingObject) {
-            isHoldingObject = false;
-            pickedupObject.Drop(this);
-            pickedupObject.GetComponent<Rigidbody>().isKinematic = false;
-            pickedupObject.GetComponent<Rigidbody>().AddExplosionForce(1500f, holdingObjectTransform.position - (transform.forward * 0.2f), 0.5f, 0.1f);
-            pickedupObject = null;
-        }
     }
     private void HandleCameraZoom() {
         float zoomInput = InputManager.Instance.GetCameraZoomInputDelta();
@@ -143,8 +193,8 @@ public class Player : MonoBehaviour
     private float CameraRotationXFunction(float y) {
         return (0.6286f * y * y) - (7.124f * y) + 78.95f;
     }
-    public Vector3 GetHoldingObjectPosition() {
-        return holdingObjectTransform.position;
+    public Transform GetHoldingObjectSpotTransform() {
+        return holdingObjectTransform;
     }
     private void OnCrouchPressed(InputAction.CallbackContext context) {
         _character.Crouch();

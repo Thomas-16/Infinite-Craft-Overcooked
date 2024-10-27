@@ -15,12 +15,10 @@ public class PickupableObject : MonoBehaviour
     [SerializeField] private GameObject hoverVisual;
     [SerializeField] private Collider[] mainColliders;
 
+    private Transform oldParent;
+
     protected void Update() {
         hoverVisual.SetActive(HoveringPlayer != null && !IsPickedUp);
-
-        if(IsPickedUp) {
-            transform.position = PickedupByPlayer.GetHoldingObjectPosition();
-        }
 
         // Reset IsHovered to false at the beginning of the frame
         HoveringPlayer = null;
@@ -32,6 +30,10 @@ public class PickupableObject : MonoBehaviour
         foreach(Collider collider in mainColliders) {
             collider.enabled = false;
         }
+        GetComponent<Rigidbody>().isKinematic = true;
+        oldParent = transform.parent;
+        transform.parent = PickedupByPlayer.GetHoldingObjectSpotTransform();
+        transform.position = PickedupByPlayer.GetHoldingObjectSpotTransform().position;
     }
     public void Drop(Player player) {
         if(player != PickedupByPlayer) {
@@ -44,6 +46,8 @@ public class PickupableObject : MonoBehaviour
         foreach (Collider collider in mainColliders) {
             collider.enabled = true;
         }
+        GetComponent<Rigidbody>().isKinematic = false;
+        transform.SetParent(oldParent, true);
     }
     public void HoverOver(Player player) {
         // Set IsHovered to true when HoverOver is called

@@ -73,9 +73,9 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
                     ""initialStateCheck"": false
                 },
                 {
-                    ""name"": ""LaunchItem"",
+                    ""name"": ""Interact"",
                     ""type"": ""Button"",
-                    ""id"": ""d075b602-d2b5-4850-9991-41c36a5845ff"",
+                    ""id"": ""3f02875c-cb09-4b3d-b1f0-fe237ae6f9c9"",
                     ""expectedControlType"": """",
                     ""processors"": """",
                     ""interactions"": """",
@@ -239,23 +239,23 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
                 },
                 {
                     ""name"": """",
-                    ""id"": ""3dd0e147-76b8-4410-870a-b63c0b9adc34"",
-                    ""path"": ""<Keyboard>/r"",
+                    ""id"": ""7ad80dfa-e86b-4426-bc38-6c1fcc335dfc"",
+                    ""path"": ""<Keyboard>/f"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
-                    ""action"": ""LaunchItem"",
+                    ""action"": ""Interact"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 },
                 {
                     ""name"": """",
-                    ""id"": ""9972d4e6-1025-479a-9fc9-ad1b18423099"",
-                    ""path"": ""<Gamepad>/rightShoulder"",
+                    ""id"": ""a182f918-afcc-4588-82b6-c6b3161ff9fe"",
+                    ""path"": ""<Gamepad>/buttonNorth"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
-                    ""action"": ""LaunchItem"",
+                    ""action"": ""Interact"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 }
@@ -271,7 +271,7 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
         m_Player_Jump = m_Player.FindAction("Jump", throwIfNotFound: true);
         m_Player_CameraZoom = m_Player.FindAction("CameraZoom", throwIfNotFound: true);
         m_Player_Pickup = m_Player.FindAction("Pickup", throwIfNotFound: true);
-        m_Player_LaunchItem = m_Player.FindAction("LaunchItem", throwIfNotFound: true);
+        m_Player_Interact = m_Player.FindAction("Interact", throwIfNotFound: true);
     }
 
     ~@PlayerInputActions()
@@ -343,7 +343,7 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
     private readonly InputAction m_Player_Jump;
     private readonly InputAction m_Player_CameraZoom;
     private readonly InputAction m_Player_Pickup;
-    private readonly InputAction m_Player_LaunchItem;
+    private readonly InputAction m_Player_Interact;
     public struct PlayerActions
     {
         private @PlayerInputActions m_Wrapper;
@@ -353,7 +353,7 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
         public InputAction @Jump => m_Wrapper.m_Player_Jump;
         public InputAction @CameraZoom => m_Wrapper.m_Player_CameraZoom;
         public InputAction @Pickup => m_Wrapper.m_Player_Pickup;
-        public InputAction @LaunchItem => m_Wrapper.m_Player_LaunchItem;
+        public InputAction @Interact => m_Wrapper.m_Player_Interact;
         public InputActionMap Get() { return m_Wrapper.m_Player; }
         public void Enable() { Get().Enable(); }
         public void Disable() { Get().Disable(); }
@@ -378,9 +378,9 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
             @Pickup.started += instance.OnPickup;
             @Pickup.performed += instance.OnPickup;
             @Pickup.canceled += instance.OnPickup;
-            @LaunchItem.started += instance.OnLaunchItem;
-            @LaunchItem.performed += instance.OnLaunchItem;
-            @LaunchItem.canceled += instance.OnLaunchItem;
+            @Interact.started += instance.OnInteract;
+            @Interact.performed += instance.OnInteract;
+            @Interact.canceled += instance.OnInteract;
         }
 
         private void UnregisterCallbacks(IPlayerActions instance)
@@ -400,9 +400,9 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
             @Pickup.started -= instance.OnPickup;
             @Pickup.performed -= instance.OnPickup;
             @Pickup.canceled -= instance.OnPickup;
-            @LaunchItem.started -= instance.OnLaunchItem;
-            @LaunchItem.performed -= instance.OnLaunchItem;
-            @LaunchItem.canceled -= instance.OnLaunchItem;
+            @Interact.started -= instance.OnInteract;
+            @Interact.performed -= instance.OnInteract;
+            @Interact.canceled -= instance.OnInteract;
         }
 
         public void RemoveCallbacks(IPlayerActions instance)
@@ -427,6 +427,6 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
         void OnJump(InputAction.CallbackContext context);
         void OnCameraZoom(InputAction.CallbackContext context);
         void OnPickup(InputAction.CallbackContext context);
-        void OnLaunchItem(InputAction.CallbackContext context);
+        void OnInteract(InputAction.CallbackContext context);
     }
 }

@@ -11,7 +11,7 @@ public class Player : MonoBehaviour
     [Header("Camera Zoom Control")]
     private float cameraZoom = 7.6f;
     [SerializeField] private float zoomSpeed = 10f;
-    private float minZoom = 4.05f;
+    private float minZoom = 3.95f;
     private float maxZoom = 9.77f;
 
     private Queue<float> zoomInputs = new Queue<float>();  // Queue to store the last 5 zoom inputs

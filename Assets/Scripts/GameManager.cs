@@ -19,10 +19,10 @@ public class GameManager : MonoBehaviour
 
     private async void Start() {
         Vector3 pos = new Vector3(0, 5f, 3.5f);
-        int numPositions = 35;
+        int numPositions = 40;
         for (int i = 0; i < numPositions; i++) {
             // Generate a random point within a sphere of the given distance around the original position
-            Vector3 randomOffset = Random.insideUnitSphere * 4f;
+            Vector3 randomOffset = Random.insideUnitSphere * 3f;
             Vector3 newPosition = pos + randomOffset;
 
             string randomElementName = await GetRandomLineAsync();

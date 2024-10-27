@@ -177,7 +177,7 @@ public class Player : MonoBehaviour
             cameraZoom = Mathf.Lerp(cameraZoom, targetZoom, zoomSpeed * Time.deltaTime);
 
             virtualCamera.GetCinemachineComponent<CinemachineTransposer>().m_FollowOffset = new Vector3(0, cameraZoom, CameraZoomZFunction(cameraZoom));
-            virtualCamera.transform.rotation = Quaternion.Euler(CameraRotationXFunction(cameraZoom), 0f, 0f);
+            //virtualCamera.transform.rotation = Quaternion.Euler(CameraRotationXFunction(cameraZoom), 0f, 0f);
         }
     }
     private float GetAverageZoomInput() {

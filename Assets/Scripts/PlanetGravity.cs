@@ -12,6 +12,7 @@ public class PlanetGravity : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         rb.useGravity = false; // Disable default gravity
         //rb.constraints = RigidbodyConstraints.FreezeRotation; // Prevent rigidbody from tumbling randomly
+        planetCenter = GameManager.Instance.planetTransform;
     }
 
     void FixedUpdate() {

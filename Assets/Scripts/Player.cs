@@ -3,6 +3,7 @@ using ECM2;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using TreeEditor;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -14,11 +15,11 @@ public class Player : MonoBehaviour
     private float minZoom = 3.95f;
     private float maxZoom = 9.77f;
 
-    private Queue<float> zoomInputs = new Queue<float>();  // Queue to store the last 5 zoom inputs
-    private int bufferSize = 5;  // Number of frames to average over
+    //private Queue<float> zoomInputs = new Queue<float>();  // Queue to store the last 5 zoom inputs
+    //private int bufferSize = 5;  // Number of frames to average over
 
     protected Character _character;
-    private CinemachineVirtualCamera virtualCamera;
+    //private CinemachineVirtualCamera virtualCamera;
     private ConeCastHelper coneCastHelper;
 
     [Header("References")]
@@ -45,7 +46,7 @@ public class Player : MonoBehaviour
 
     protected virtual void Awake() {
         _character = GetComponent<Character>();
-        virtualCamera = FindObjectOfType<CinemachineVirtualCamera>();
+        //virtualCamera = FindObjectOfType<CinemachineVirtualCamera>();
 
         coneCastHelper = new ConeCastHelper();
         coneCastHelper.InitializeConeCast(rayCastAngle, numRaycastRays);
@@ -73,7 +74,7 @@ public class Player : MonoBehaviour
 
         HandleHoverObjects();
         HandlePickupInput();
-        HandleCameraZoom();
+        //HandleCameraZoom();
         HandleInteractInput();
     }
 
@@ -162,31 +163,35 @@ public class Player : MonoBehaviour
         }
         hoveringObject = null;
     }
-    private void HandleCameraZoom() {
-        float zoomInput = InputManager.Instance.GetCameraZoomInputDelta();
+    //private void HandleCameraZoom() {
+    //    float zoomInput = InputManager.Instance.GetCameraZoomInputDelta();
 
-        zoomInputs.Enqueue(zoomInput);
-        if (zoomInputs.Count > bufferSize) {
-            zoomInputs.Dequeue();
-        }
+    //    zoomInputs.Enqueue(zoomInput);
+    //    if (zoomInputs.Count > bufferSize) {
+    //        zoomInputs.Dequeue();
+    //    }
 
-        float averageZoomInput = GetAverageZoomInput();
+    //    float averageZoomInput = GetAverageZoomInput();
 
-        if (Mathf.Abs(averageZoomInput) > 0.01f) {
-            float targetZoom = Mathf.Clamp(cameraZoom - averageZoomInput, minZoom, maxZoom);
-            cameraZoom = Mathf.Lerp(cameraZoom, targetZoom, zoomSpeed * Time.deltaTime);
+    //    float targetZoom = Mathf.Clamp(cameraZoom - averageZoomInput, minZoom, maxZoom);
+    //    cameraZoom = Mathf.Lerp(cameraZoom, targetZoom, zoomSpeed * Time.deltaTime);
 
-            virtualCamera.GetCinemachineComponent<CinemachineTransposer>().m_FollowOffset = new Vector3(0, cameraZoom, CameraZoomZFunction(cameraZoom));
-            //virtualCamera.transform.rotation = Quaternion.Euler(CameraRotationXFunction(cameraZoom), 0f, 0f);
-        }
-    }
-    private float GetAverageZoomInput() {
-        float sum = 0f;
-        foreach (float input in zoomInputs) {
-            sum += input;
-        }
-        return sum / zoomInputs.Count;
-    }
+    //    Vector3 relativeFollowOffset = new Vector3(0, cameraZoom, CameraZoomZFunction(cameraZoom));
+    //    Quaternion rotation = Quaternion.FromToRotation(Vector3.up, transform.up);
+
+    //    // Rotate the relative position by this quaternion to align it with the player's up vector
+    //    Vector3 adjustedPosition = rotation * relativeFollowOffset;
+
+    //    virtualCamera.GetCinemachineComponent<CinemachineTransposer>().m_FollowOffset = adjustedPosition;
+    //    //virtualCamera.transform.rotation = Quaternion.Euler(CameraRotationXFunction(cameraZoom), 0f, 0f);
+    //}
+    //private float GetAverageZoomInput() {
+    //    float sum = 0f;
+    //    foreach (float input in zoomInputs) {
+    //        sum += input;
+    //    }
+    //    return sum / zoomInputs.Count;
+    //}
     private float CameraZoomZFunction(float y) {
         return (0.1375f * y * y) - (2.149f * y) + 4.196f;
     }

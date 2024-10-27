@@ -80,6 +80,15 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""LookInput"",
+                    ""type"": ""Value"",
+                    ""id"": ""dee05b77-a4cd-49d2-82da-48617f4896dc"",
+                    ""expectedControlType"": ""Vector2"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": true
                 }
             ],
             ""bindings"": [
@@ -258,6 +267,28 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
                     ""action"": ""Interact"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""3bb36375-dd6a-40d9-83a4-9a7158db0bc9"",
+                    ""path"": ""<Mouse>/delta"",
+                    ""interactions"": """",
+                    ""processors"": ""ScaleVector2(x=0.25,y=0.25)"",
+                    ""groups"": """",
+                    ""action"": ""LookInput"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""9da52c3f-63ee-4c20-853a-b02425a01ca4"",
+                    ""path"": ""<Gamepad>/rightStick"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""LookInput"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -272,6 +303,7 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
         m_Player_CameraZoom = m_Player.FindAction("CameraZoom", throwIfNotFound: true);
         m_Player_Pickup = m_Player.FindAction("Pickup", throwIfNotFound: true);
         m_Player_Interact = m_Player.FindAction("Interact", throwIfNotFound: true);
+        m_Player_LookInput = m_Player.FindAction("LookInput", throwIfNotFound: true);
     }
 
     ~@PlayerInputActions()
@@ -344,6 +376,7 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
     private readonly InputAction m_Player_CameraZoom;
     private readonly InputAction m_Player_Pickup;
     private readonly InputAction m_Player_Interact;
+    private readonly InputAction m_Player_LookInput;
     public struct PlayerActions
     {
         private @PlayerInputActions m_Wrapper;
@@ -354,6 +387,7 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
         public InputAction @CameraZoom => m_Wrapper.m_Player_CameraZoom;
         public InputAction @Pickup => m_Wrapper.m_Player_Pickup;
         public InputAction @Interact => m_Wrapper.m_Player_Interact;
+        public InputAction @LookInput => m_Wrapper.m_Player_LookInput;
         public InputActionMap Get() { return m_Wrapper.m_Player; }
         public void Enable() { Get().Enable(); }
         public void Disable() { Get().Disable(); }
@@ -381,6 +415,9 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
             @Interact.started += instance.OnInteract;
             @Interact.performed += instance.OnInteract;
             @Interact.canceled += instance.OnInteract;
+            @LookInput.started += instance.OnLookInput;
+            @LookInput.performed += instance.OnLookInput;
+            @LookInput.canceled += instance.OnLookInput;
         }
 
         private void UnregisterCallbacks(IPlayerActions instance)
@@ -403,6 +440,9 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
             @Interact.started -= instance.OnInteract;
             @Interact.performed -= instance.OnInteract;
             @Interact.canceled -= instance.OnInteract;
+            @LookInput.started -= instance.OnLookInput;
+            @LookInput.performed -= instance.OnLookInput;
+            @LookInput.canceled -= instance.OnLookInput;
         }
 
         public void RemoveCallbacks(IPlayerActions instance)
@@ -428,5 +468,6 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
         void OnCameraZoom(InputAction.CallbackContext context);
         void OnPickup(InputAction.CallbackContext context);
         void OnInteract(InputAction.CallbackContext context);
+        void OnLookInput(InputAction.CallbackContext context);
     }
 }

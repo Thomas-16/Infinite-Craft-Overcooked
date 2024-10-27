@@ -12,25 +12,26 @@ public class GameManager : MonoBehaviour
 
     [SerializeField] private GameObject elementPrefab;
     [SerializeField] private TextAsset allItemsTxt;
+    public Transform planetTransform; 
 
     private void Awake() {
         Instance = this;
     }
 
     private async void Start() {
-        //Vector3 pos = new Vector3(0, 5f, 3.5f);
-        //int numPositions = 40;
-        //for (int i = 0; i < numPositions; i++) {
-        //    // Generate a random point within a sphere of the given distance around the original position
-        //    Vector3 randomOffset = Random.insideUnitSphere * 3f;
-        //    Vector3 newPosition = pos + randomOffset;
+        Vector3 pos = new Vector3(0, 44f, 3.5f);
+        int numPositions = 40;
+        for (int i = 0; i < numPositions; i++) {
+            // Generate a random point within a sphere of the given distance around the original position
+            Vector3 randomOffset = Random.insideUnitSphere * 3f;
+            Vector3 newPosition = pos + randomOffset;
 
-        //    string randomElementName = await GetRandomLineAsync();
-        //    if(randomElementName.Length > 6) {
-        //        continue;
-        //    }
-        //    SpawnElement(randomElementName, newPosition);
-        //}
+            string randomElementName = await GetRandomLineAsync();
+            if (randomElementName.Length > 6) {
+                continue;
+            }
+            SpawnElement(randomElementName, newPosition);
+        }
     }
 
     public async void MergeElements(LLement llement1, LLement llement2) {

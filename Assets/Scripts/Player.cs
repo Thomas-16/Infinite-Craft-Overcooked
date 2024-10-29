@@ -40,6 +40,7 @@ public class Player : MonoBehaviour
     private float pickupInputStartTime;
     private bool pickupInputActive = false;
     private bool justPickedUp = false;
+    private float timeLastThrew;
 
     private float lastTriedToMergeTime;
     private bool interactInputActive;
@@ -109,7 +110,7 @@ public class Player : MonoBehaviour
                 pickupInputStartTime = Time.time;
 
                 // Pick up the object instantly if hovering over an object and not already holding one
-                if (hoveringObject != null && !isHoldingObject) {
+                if (hoveringObject != null && !isHoldingObject && Time.time - timeLastThrew > 0.5f) {
                     isHoldingObject = true;
                     hoveringObject.GetComponent<Rigidbody>().isKinematic = true;
                     hoveringObject.Pickup(this);
@@ -119,10 +120,12 @@ public class Player : MonoBehaviour
             }
             else if (isHoldingObject && !justPickedUp && Time.time - pickupInputStartTime >= throwItemInputHoldThreshold) {
                 // Throw the object immediately when the input is held for more than 0.5 seconds
+                //Debug.Log("throwing");
                 isHoldingObject = false;
                 pickedupObject.Drop(this);
                 pickedupObject.GetComponent<Rigidbody>().AddExplosionForce(1500f, holdingObjectTransform.position - (transform.forward * 0.2f), 0.5f, 0.1f);
                 pickedupObject = null;
+                timeLastThrew = Time.time;
 
                 // Reset the input state so we don't throw multiple times on one long input
                 pickupInputActive = false;

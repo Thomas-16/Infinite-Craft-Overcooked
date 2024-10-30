@@ -58,6 +58,8 @@ MonoBehaviour:
   mainColliders:
   - {fileID: 6647808904486834549}
   <ElementName>k__BackingField: Water
+  mergeForceThreshold: 0.1
+  mergeCheckDelay: 0.1
   text1: {fileID: 738711399963205271}
   text2: {fileID: 6418282647947112425}
   text3: {fileID: 4303032356465661348}

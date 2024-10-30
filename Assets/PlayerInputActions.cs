@@ -80,6 +80,15 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ThrowCharge"",
+                    ""type"": ""Button"",
+                    ""id"": ""189219eb-824a-4394-9350-fdf6554c4bb0"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -218,7 +227,7 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
                 {
                     ""name"": """",
                     ""id"": ""a5c74dcc-a6b7-4663-80a4-24670b9e7a44"",
-                    ""path"": ""<Keyboard>/e"",
+                    ""path"": ""<Keyboard>/f"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
@@ -240,7 +249,7 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
                 {
                     ""name"": """",
                     ""id"": ""7ad80dfa-e86b-4426-bc38-6c1fcc335dfc"",
-                    ""path"": ""<Keyboard>/f"",
+                    ""path"": ""<Keyboard>/x"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
@@ -258,6 +267,17 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
                     ""action"": ""Interact"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""064a675e-2b9e-45b4-ba48-6644a0a77957"",
+                    ""path"": ""<Mouse>/rightButton"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""ThrowCharge"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -272,6 +292,7 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
         m_Player_CameraZoom = m_Player.FindAction("CameraZoom", throwIfNotFound: true);
         m_Player_Pickup = m_Player.FindAction("Pickup", throwIfNotFound: true);
         m_Player_Interact = m_Player.FindAction("Interact", throwIfNotFound: true);
+        m_Player_ThrowCharge = m_Player.FindAction("ThrowCharge", throwIfNotFound: true);
     }
 
     ~@PlayerInputActions()
@@ -344,6 +365,7 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
     private readonly InputAction m_Player_CameraZoom;
     private readonly InputAction m_Player_Pickup;
     private readonly InputAction m_Player_Interact;
+    private readonly InputAction m_Player_ThrowCharge;
     public struct PlayerActions
     {
         private @PlayerInputActions m_Wrapper;
@@ -354,6 +376,7 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
         public InputAction @CameraZoom => m_Wrapper.m_Player_CameraZoom;
         public InputAction @Pickup => m_Wrapper.m_Player_Pickup;
         public InputAction @Interact => m_Wrapper.m_Player_Interact;
+        public InputAction @ThrowCharge => m_Wrapper.m_Player_ThrowCharge;
         public InputActionMap Get() { return m_Wrapper.m_Player; }
         public void Enable() { Get().Enable(); }
         public void Disable() { Get().Disable(); }
@@ -381,6 +404,9 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
             @Interact.started += instance.OnInteract;
             @Interact.performed += instance.OnInteract;
             @Interact.canceled += instance.OnInteract;
+            @ThrowCharge.started += instance.OnThrowCharge;
+            @ThrowCharge.performed += instance.OnThrowCharge;
+            @ThrowCharge.canceled += instance.OnThrowCharge;
         }
 
         private void UnregisterCallbacks(IPlayerActions instance)
@@ -403,6 +429,9 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
             @Interact.started -= instance.OnInteract;
             @Interact.performed -= instance.OnInteract;
             @Interact.canceled -= instance.OnInteract;
+            @ThrowCharge.started -= instance.OnThrowCharge;
+            @ThrowCharge.performed -= instance.OnThrowCharge;
+            @ThrowCharge.canceled -= instance.OnThrowCharge;
         }
 
         public void RemoveCallbacks(IPlayerActions instance)
@@ -428,5 +457,6 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
         void OnCameraZoom(InputAction.CallbackContext context);
         void OnPickup(InputAction.CallbackContext context);
         void OnInteract(InputAction.CallbackContext context);
+        void OnThrowCharge(InputAction.CallbackContext context);
     }
 }

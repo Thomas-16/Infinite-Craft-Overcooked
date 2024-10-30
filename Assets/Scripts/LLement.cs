@@ -1,7 +1,6 @@
+using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
-using TMPro;
-using UnityEngine;
 
 public class LLement : PickupableObject
 {
@@ -12,37 +11,101 @@ public class LLement : PickupableObject
 	[SerializeField] private float mergeForceThreshold = 5f;
 	[SerializeField] private float mergeCheckDelay = 0.1f;
 
-	private bool canTriggerMerge = false;  // Can this element initiate a merge?
-	private bool hasBeenHeld = false;      // Has this element ever been held by a player?
+	[Header("Visual Settings")]
+	[SerializeField] private SpriteRenderer emojiRenderer;
+	[SerializeField] private float defaultScale = 1f;
+	[SerializeField] private float spriteSizeMultiplier = 0.3f; // 3/10ths of original size
 
-	[SerializeField] private TextMeshPro text1;
-	[SerializeField] private TextMeshPro text2;
-	[SerializeField] private TextMeshPro text3;
-	[SerializeField] private TextMeshPro text4;
-	[SerializeField] private TextMeshPro text5;
-	[SerializeField] private TextMeshPro text6;
+	private ObjectMetadata metadata;
+	private bool canTriggerMerge = false;
+	private bool hasBeenHeld = false;
 
 	private void Awake()
 	{
-		SetElementName(ElementName);
+		SetupVisuals();
+		if (!string.IsNullOrEmpty(ElementName))
+		{
+			SetElementName(ElementName);
+		}
 	}
 
-	public void SetElementName(string elementName)
+	private void SetupVisuals()
+	{
+		if (emojiRenderer == null)
+		{
+			// Create a child object for visuals
+			GameObject visuals = new GameObject("Visuals");
+			visuals.transform.SetParent(transform);
+			visuals.transform.localPosition = Vector3.zero;
+			visuals.transform.localRotation = Quaternion.identity;
+
+			// Add GameBillboard component
+			visuals.AddComponent<GameBillboard>();
+
+			// Add emoji renderer
+			GameObject emojiObj = new GameObject("EmojiSprite");
+			emojiObj.transform.SetParent(visuals.transform);
+			emojiObj.transform.localPosition = Vector3.zero;
+
+			SpriteRenderer spriteRenderer = emojiObj.AddComponent<SpriteRenderer>();
+			spriteRenderer.sortingOrder = 1;
+			emojiRenderer = spriteRenderer;
+		}
+	}
+
+	public async void SetElementName(string elementName)
 	{
 		ElementName = elementName;
-		text1.text = ElementName;
-		text2.text = ElementName;
-		text3.text = ElementName;
-		text4.text = ElementName;
-		text5.text = ElementName;
-		text6.text = ElementName;
+
+		metadata = await ObjectMetadataAPI.Instance.GetObjectMetadata(elementName);
+
+		if (metadata != null)
+		{
+			// Convert emoji to sprite and apply it
+			Sprite emojiSprite = await EmojiConverter.GetEmojiSprite(metadata.emoji);
+			if (emojiSprite != null)
+			{
+				emojiRenderer.sprite = emojiSprite;
+				AdjustSpriteScale();
+			}
+
+			// Apply scale
+			transform.localScale = Vector3.one * (defaultScale/* * metadata.scale * 1f*/);
+
+			if (TryGetComponent<Rigidbody>(out Rigidbody rb))
+			{
+				//rb.mass = metadata.mass;
+			}
+		}
+	}
+
+	private void AdjustSpriteScale()
+	{
+		if (emojiRenderer == null || emojiRenderer.sprite == null) return;
+
+		// Get the collider (assuming first collider is the main one)
+		Collider mainCollider = mainColliders[0];
+		if (mainCollider == null) return;
+
+		// Get world space bounds
+		Bounds bounds = mainCollider.bounds;
+
+		// Get the smallest dimension in world space
+		float smallestDimension = Mathf.Min(bounds.size.x, bounds.size.y);
+
+		// Calculate local scale needed
+		float worldToLocalScale = 1f / transform.lossyScale.x; // Assuming uniform scale
+		float targetLocalScale = smallestDimension * worldToLocalScale * spriteSizeMultiplier;
+
+		// Apply the scale to the emoji object's transform
+		emojiRenderer.transform.localScale = Vector3.one * targetLocalScale;
 	}
 
 	public override void Pickup(Player player)
 	{
 		base.Pickup(player);
-		hasBeenHeld = true;      // Mark that this element has been held
-		canTriggerMerge = false; // Disable merging while held
+		hasBeenHeld = true;
+		canTriggerMerge = false;
 	}
 
 	public override void Drop(Player player)
@@ -54,34 +117,33 @@ public class LLement : PickupableObject
 	private IEnumerator EnableMergeAfterDelay()
 	{
 		yield return new WaitForSeconds(mergeCheckDelay);
-		canTriggerMerge = true;  // Enable this element to trigger merges
+		canTriggerMerge = true;
 	}
 
 	private void OnCollisionEnter(Collision collision)
 	{
-		// Only proceed if this element can trigger merges (was previously held and dropped)
 		if (!canTriggerMerge || !hasBeenHeld) return;
 
 		LLement otherElement = collision.gameObject.GetComponent<LLement>();
-		if (otherElement != null) // Notice we don't check if the other element canTriggerMerge
+		if (otherElement != null)
 		{
 			float collisionForce = collision.impulse.magnitude;
 
 			if (collisionForce >= mergeForceThreshold)
 			{
-				// Disable further merges for both elements
 				canTriggerMerge = false;
 				otherElement.canTriggerMerge = false;
-
-				// Initiate the merge
 				GameManager.Instance.MergeElements(this, otherElement);
 			}
 		}
 	}
 
-	// Optional: Method to check if this element has ever been handled by a player
-	public bool HasBeenPlayerHandled()
+	private void OnValidate()
 	{
-		return hasBeenHeld;
+		SetupVisuals();
+		if (emojiRenderer != null && emojiRenderer.sprite != null)
+		{
+			AdjustSpriteScale();
+		}
 	}
 }

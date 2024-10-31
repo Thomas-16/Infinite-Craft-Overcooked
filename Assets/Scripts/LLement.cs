@@ -24,9 +24,18 @@ public class LLement : PickupableObject
 	[SerializeField] private Color labelColor = Color.white;
 	[SerializeField] private Color panelColor = new Color(0f, 0f, 0f, 0.5f);
 
+	[Header("UI Fade Settings")]
+	[SerializeField] private float fadeSpeed = 8f;
+	[SerializeField] private float fadeInAlpha = 1f;
+	[SerializeField] private float fadeOutAlpha = 0f;
+
 	private ObjectMetadata metadata;
 	private bool canTriggerMerge = false;
 	private bool hasBeenHeld = false;
+	private bool isMouseOver = false;
+	private float currentAlpha = 0f;
+	private float targetAlpha = 0f;
+
 	public GameObject visuals;
 
 	private void Awake()
@@ -36,24 +45,53 @@ public class LLement : PickupableObject
 		{
 			SetElementName(ElementName);
 		}
+		UpdateUIAlpha(0f);
+	}
+
+	protected override void Update()
+	{
+		base.Update();
+
+		bool shouldBeVisible = HoveringPlayer != null || IsPickedUp || isMouseOver;
+		targetAlpha = shouldBeVisible ? fadeInAlpha : fadeOutAlpha;
+
+		if (currentAlpha != targetAlpha)
+		{
+			currentAlpha = Mathf.MoveTowards(currentAlpha, targetAlpha, fadeSpeed * Time.deltaTime);
+			UpdateUIAlpha(currentAlpha);
+		}
+	}
+
+	private void UpdateUIAlpha(float alpha)
+	{
+		if (nameLabel != null)
+		{
+			Color textColor = nameLabel.color;
+			textColor.a = alpha;
+			nameLabel.color = textColor;
+
+			Image panelImage = nameLabel.transform.parent.GetComponent<Image>();
+			if (panelImage != null)
+			{
+				Color bgColor = panelImage.color;
+				bgColor.a = alpha * 0.85f;
+				panelImage.color = bgColor;
+			}
+		}
 	}
 
 	private void SetupVisuals()
 	{
-		// Check if visuals already exists
 		if (visuals != null) return;
 
-		// Find existing visuals object if it exists
 		Transform existingVisuals = transform.Find("Visuals");
 		if (existingVisuals != null)
 		{
 			visuals = existingVisuals.gameObject;
-			// Find existing emoji renderer if it exists
 			emojiRenderer = visuals.GetComponentInChildren<SpriteRenderer>();
 			return;
 		}
 
-		// Create new visuals if none exist
 		visuals = new GameObject("Visuals");
 		visuals.transform.SetParent(transform);
 		visuals.transform.localPosition = Vector3.zero;
@@ -76,7 +114,6 @@ public class LLement : PickupableObject
 	{
 		if (worldSpaceCanvas == null)
 		{
-			// Create canvas
 			GameObject canvasObj = new GameObject("NameCanvas");
 			canvasObj.transform.SetParent(visuals.transform);
 			canvasObj.transform.localPosition = Vector3.up * labelVerticalOffset;
@@ -86,30 +123,25 @@ public class LLement : PickupableObject
 			canvas.renderMode = RenderMode.WorldSpace;
 			canvas.worldCamera = Camera.main;
 
-			// Add constant scale
 			canvasObj.AddComponent<ConstantScale>();
 
-			// Create background panel
 			GameObject panelObj = new GameObject("BackgroundPanel");
 			panelObj.transform.SetParent(canvasObj.transform);
 
 			RectTransform panelRect = panelObj.AddComponent<RectTransform>();
 			panelRect.anchoredPosition = Vector2.zero;
 
-			// Add ContentSizeFitter to panel
 			ContentSizeFitter panelFitter = panelObj.AddComponent<ContentSizeFitter>();
 			panelFitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
 			panelFitter.verticalFit = ContentSizeFitter.FitMode.MinSize;
 
-			// Add HorizontalLayoutGroup to handle padding
 			HorizontalLayoutGroup layoutGroup = panelObj.AddComponent<HorizontalLayoutGroup>();
-			layoutGroup.padding = new RectOffset(10, 10, 5, 5); // Horizontal and vertical padding
+			layoutGroup.padding = new RectOffset(10, 10, 5, 5);
 			layoutGroup.childAlignment = TextAnchor.MiddleCenter;
 
 			Image panelImage = panelObj.AddComponent<Image>();
 			panelImage.color = panelColor;
 
-			// Create name label
 			GameObject labelObj = new GameObject("NameLabel");
 			labelObj.transform.SetParent(panelObj.transform);
 
@@ -124,9 +156,10 @@ public class LLement : PickupableObject
 			worldSpaceCanvas = canvas;
 			nameLabel = tmpText;
 
-			// Set initial height for the panel
 			LayoutRebuilder.ForceRebuildLayoutImmediate(panelRect);
-			panelRect.sizeDelta = new Vector2(0, 30); // Height only, width will be determined by content
+			panelRect.sizeDelta = new Vector2(0, 30);
+
+			UpdateUIAlpha(fadeOutAlpha);
 		}
 	}
 
@@ -161,22 +194,25 @@ public class LLement : PickupableObject
 	{
 		if (emojiRenderer == null || emojiRenderer.sprite == null) return;
 
-		// Get the collider (assuming first collider is the main one)
 		Collider mainCollider = mainColliders[0];
 		if (mainCollider == null) return;
 
-		// Get world space bounds
 		Bounds bounds = mainCollider.bounds;
-
-		// Get the smallest dimension in world space
 		float smallestDimension = Mathf.Min(bounds.size.x, bounds.size.y);
-
-		// Calculate local scale needed
-		float worldToLocalScale = 1f / transform.lossyScale.x; // Assuming uniform scale
+		float worldToLocalScale = 1f / transform.lossyScale.x;
 		float targetLocalScale = smallestDimension * worldToLocalScale * spriteSizeMultiplier;
 
-		// Apply the scale to the emoji object's transform
 		emojiRenderer.transform.localScale = Vector3.one * targetLocalScale;
+	}
+
+	private void OnMouseEnter()
+	{
+		isMouseOver = true;
+	}
+
+	private void OnMouseExit()
+	{
+		isMouseOver = false;
 	}
 
 	public override void Pickup(Player player)
@@ -218,13 +254,11 @@ public class LLement : PickupableObject
 
 	private void OnValidate()
 	{
-		// Only setup if we don't have visuals yet or if we're missing required components
 		if (visuals == null || emojiRenderer == null)
 		{
 			SetupVisuals();
 		}
 
-		// Adjust existing components if needed
 		if (emojiRenderer != null && emojiRenderer.sprite != null)
 		{
 			AdjustSpriteScale();

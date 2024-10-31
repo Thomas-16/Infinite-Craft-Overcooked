@@ -9,20 +9,6 @@ using UnityEngine.UI;
 
 public class Player : MonoBehaviour
 {
-	[Header("Camera Zoom Control")]
-	private float cameraZoom = 7.6f;
-	[SerializeField] private float zoomSpeed = 10f;
-	private float minZoom = 3.95f;
-	private float maxZoom = 9.77f;
-
-	private Queue<float> zoomInputs = new Queue<float>();
-	private int bufferSize = 5;
-
-	protected Character _character;
-	private CinemachineVirtualCamera virtualCamera;
-	private ConeCastHelper coneCastHelper;
-	private Camera mainCamera;
-
 	[Header("References")]
 	[SerializeField] private Transform holdingObjectTransform;
 	[SerializeField] private Transform lookingRaycastPositionTransform;
@@ -67,10 +53,13 @@ public class Player : MonoBehaviour
 	private float lastTriedToMergeTime;
 	private bool interactInputActive;
 
+	protected Character _character;
+	private Camera mainCamera;
+	private ConeCastHelper coneCastHelper;
+
 	protected virtual void Awake()
 	{
 		_character = GetComponent<Character>();
-		virtualCamera = FindObjectOfType<CinemachineVirtualCamera>();
 		mainCamera = Camera.main;
 
 		coneCastHelper = new ConeCastHelper();
@@ -107,7 +96,6 @@ public class Player : MonoBehaviour
 		HandleHoverObjects();
 		HandlePickupInput();
 		HandleThrowInput();
-		HandleCameraZoom();
 		HandleInteractInput();
 	}
 
@@ -303,49 +291,6 @@ public class Player : MonoBehaviour
 		{
 			interactInputActive = false;
 		}
-	}
-
-	private void HandleCameraZoom()
-	{
-		float zoomInput = InputManager.Instance.GetCameraZoomInputDelta();
-
-		zoomInputs.Enqueue(zoomInput);
-		if (zoomInputs.Count > bufferSize)
-		{
-			zoomInputs.Dequeue();
-		}
-
-		float averageZoomInput = GetAverageZoomInput();
-
-		if (Mathf.Abs(averageZoomInput) > 0.01f)
-		{
-			float targetZoom = Mathf.Clamp(cameraZoom - averageZoomInput, minZoom, maxZoom);
-			cameraZoom = Mathf.Lerp(cameraZoom, targetZoom, zoomSpeed * Time.deltaTime);
-
-			virtualCamera.GetCinemachineComponent<CinemachineTransposer>().m_FollowOffset =
-				new Vector3(0, cameraZoom, CameraZoomZFunction(cameraZoom));
-			virtualCamera.transform.rotation = Quaternion.Euler(CameraRotationXFunction(cameraZoom), 0f, 0f);
-		}
-	}
-
-	private float GetAverageZoomInput()
-	{
-		float sum = 0f;
-		foreach (float input in zoomInputs)
-		{
-			sum += input;
-		}
-		return sum / zoomInputs.Count;
-	}
-
-	private float CameraZoomZFunction(float y)
-	{
-		return (0.1375f * y * y) - (2.149f * y) + 4.196f;
-	}
-
-	private float CameraRotationXFunction(float y)
-	{
-		return (0.6286f * y * y) - (7.124f * y) + 78.95f;
 	}
 
 	public Transform GetHoldingObjectSpotTransform()

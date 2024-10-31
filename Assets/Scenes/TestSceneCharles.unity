@@ -10713,7 +10713,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ccae5843456ef804aa3d3a01d89defe2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  zoomSpeed: 8
   holdingObjectTransform: {fileID: 1258962830}
   lookingRaycastPositionTransform: {fileID: 1049484765}
   debugVisualizeRays: 1
@@ -11409,6 +11408,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 50c0ca929b4567746b0da2d95bc4c147, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  useOfflineDefaults: 0
+  requestTimeout: 5
 --- !u!1001 &2096871947
 PrefabInstance:
   m_ObjectHideFlags: 0

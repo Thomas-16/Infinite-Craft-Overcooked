@@ -6,7 +6,7 @@ public class GameBillboard : MonoBehaviour
 
 	[Header("Billboard Settings")]
 	[SerializeField] private bool freezeXZAxis = true;
-	[SerializeField] private Vector3 rotationOffset = new Vector3(0, 180, 0);
+	[SerializeField] private Vector3 rotationOffset = new Vector3(0, 0, 0); // Changed default offset
 
 	private void Start()
 	{
@@ -19,24 +19,24 @@ public class GameBillboard : MonoBehaviour
 
 		if (freezeXZAxis)
 		{
-			// For orthographic camera, we can just match the camera's Y rotation
-			// This keeps the sprite upright while rotating to face camera
+			// For orthographic camera, match the camera's Y rotation but inverted
 			Vector3 eulerAngles = mainCamera.transform.rotation.eulerAngles;
-			transform.rotation = Quaternion.Euler(0, eulerAngles.y, 0) * Quaternion.Euler(rotationOffset);
+			transform.rotation = Quaternion.Euler(0, eulerAngles.y + 180f, 0) * Quaternion.Euler(rotationOffset);
 		}
 		else
 		{
-			// Full billboarding - just match camera rotation
-			transform.rotation = mainCamera.transform.rotation * Quaternion.Euler(rotationOffset);
+			// Full billboarding - match camera rotation but face towards camera
+			transform.rotation = Quaternion.LookRotation(
+				transform.position - mainCamera.transform.position,
+				mainCamera.transform.up
+			) * Quaternion.Euler(rotationOffset);
 		}
 
-		// Ensure sprite is perfectly flat relative to camera view
-		// This prevents any perspective skewing
+		// Ensure sprite faces camera in orthographic mode
 		if (mainCamera.orthographic)
 		{
-			// Align the sprite to be parallel to the camera's near plane
 			Vector3 camForward = mainCamera.transform.forward;
-			transform.forward = -camForward;
+			transform.forward = camForward; // Changed from -camForward to camForward
 		}
 	}
 
@@ -51,7 +51,7 @@ public class GameBillboard : MonoBehaviour
 
 			// Draw camera direction
 			Gizmos.color = Color.red;
-			Gizmos.DrawRay(transform.position, -mainCamera.transform.forward);
+			Gizmos.DrawRay(transform.position, mainCamera.transform.forward);
 		}
 	}
 }

@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
-using System.Collections.Generic;
+using UnityEngine.UI;
+using TMPro;
 
 public class LLement : PickupableObject
 {
@@ -14,15 +15,26 @@ public class LLement : PickupableObject
 	[Header("Visual Settings")]
 	[SerializeField] private SpriteRenderer emojiRenderer;
 	[SerializeField] private float defaultScale = 1f;
-	[SerializeField] private float spriteSizeMultiplier = 0.3f; // 3/10ths of original size
+	[SerializeField] private float spriteSizeMultiplier = 0.3f;
+
+	[Header("UI Settings")]
+	[SerializeField] private Canvas worldSpaceCanvas;
+	[SerializeField] private TextMeshProUGUI nameLabel;
+	[SerializeField] private float labelVerticalOffset = 1f;
+	[SerializeField] private float labelFadeSpeed = 5f;
+	[SerializeField] private Color labelColor = Color.white;
 
 	private ObjectMetadata metadata;
 	private bool canTriggerMerge = false;
 	private bool hasBeenHeld = false;
+	private bool isMouseOver = false;
+	private float currentLabelAlpha = 0f;
+	private float targetLabelAlpha = 0f;
 
 	private void Awake()
 	{
 		SetupVisuals();
+		SetupUI();
 		if (!string.IsNullOrEmpty(ElementName))
 		{
 			SetElementName(ElementName);
@@ -53,15 +65,139 @@ public class LLement : PickupableObject
 		}
 	}
 
+	private void SetupUI()
+	{
+		if (worldSpaceCanvas == null)
+		{
+			Collider mainCollider = mainColliders[0];
+			if (mainCollider == null) return;
+
+			// Get collider bounds for sizing
+			Bounds bounds = mainCollider.bounds;
+			float colliderWidth = bounds.size.x;
+
+			// Create canvas
+			GameObject canvasObj = new GameObject("NameCanvas");
+			canvasObj.transform.SetParent(transform);
+			canvasObj.transform.localPosition = Vector3.up * (bounds.size.y + labelVerticalOffset * 0.5f);
+			canvasObj.transform.localRotation = Quaternion.identity;
+
+			Canvas canvas = canvasObj.AddComponent<Canvas>();
+			canvas.renderMode = RenderMode.WorldSpace;
+			canvas.worldCamera = Camera.main;
+
+			// Add billboard to canvas
+			canvasObj.AddComponent<GameBillboard>();
+
+			// Set canvas size based on collider
+			RectTransform canvasRect = canvas.GetComponent<RectTransform>();
+			canvasRect.sizeDelta = new Vector2(colliderWidth * 2f, colliderWidth * 0.5f); // Width is double collider, height is half width
+
+			// Create name label
+			GameObject labelObj = new GameObject("NameLabel");
+			labelObj.transform.SetParent(canvasRect);
+
+			RectTransform labelRect = labelObj.AddComponent<RectTransform>();
+			labelRect.anchorMin = Vector2.zero;
+			labelRect.anchorMax = Vector2.one;
+			labelRect.sizeDelta = Vector2.zero;
+			labelRect.anchoredPosition = Vector2.zero;
+
+			TextMeshProUGUI tmpText = labelObj.AddComponent<TextMeshProUGUI>();
+			tmpText.alignment = TextAlignmentOptions.Center;
+			tmpText.enableAutoSizing = true;
+			tmpText.fontSizeMin = 0.1f;
+			tmpText.fontSizeMax = 2f;
+			tmpText.color = labelColor;
+
+			// Add canvas scaler to maintain consistent size in orthographic view
+			CanvasScaler scaler = canvasObj.AddComponent<CanvasScaler>();
+			scaler.dynamicPixelsPerUnit = 100f;
+
+			worldSpaceCanvas = canvas;
+			nameLabel = tmpText;
+		}
+
+		// Ensure the label starts hidden
+		if (nameLabel != null)
+		{
+			Color c = nameLabel.color;
+			c.a = 0;
+			nameLabel.color = c;
+
+			// Set smaller font size
+			AdjustTextScale();
+		}
+	}
+
+	private void AdjustTextScale()
+	{
+		if (nameLabel == null) return;
+
+		Collider mainCollider = mainColliders[0];
+		if (mainCollider == null) return;
+
+		// Get world space bounds
+		Bounds bounds = mainCollider.bounds;
+
+		// Get the width of the collider in world space
+		float colliderWidth = bounds.size.x;
+
+		// Calculate scale relative to collider size
+		float worldToLocalScale = 1f / transform.lossyScale.x;
+		float baseTextSize = colliderWidth * worldToLocalScale;
+
+		// Apply text sizing
+		nameLabel.fontSize = baseTextSize * 0.5f; // Adjust multiplier as needed
+	}
+
+
+	private void Update()
+	{
+		UpdateLabelVisibility();
+	}
+
+	private void UpdateLabelVisibility()
+	{
+		// Set target alpha based on hover states
+		targetLabelAlpha = (isMouseOver || HoveringPlayer != null) ? 1f : 0f;
+
+		// Smoothly interpolate current alpha
+		currentLabelAlpha = Mathf.Lerp(currentLabelAlpha, targetLabelAlpha, Time.deltaTime * labelFadeSpeed);
+
+		// Update label alpha
+		if (nameLabel != null)
+		{
+			Color c = nameLabel.color;
+			c.a = currentLabelAlpha;
+			nameLabel.color = c;
+		}
+	}
+
+	private void OnMouseEnter()
+	{
+		isMouseOver = true;
+	}
+
+	private void OnMouseExit()
+	{
+		isMouseOver = false;
+	}
+
 	public async void SetElementName(string elementName)
 	{
 		ElementName = elementName;
+
+		if (nameLabel != null)
+		{
+			nameLabel.text = elementName;
+			AdjustTextScale(); // Adjust text scale when setting new name
+		}
 
 		metadata = await ObjectMetadataAPI.Instance.GetObjectMetadata(elementName);
 
 		if (metadata != null)
 		{
-			// Convert emoji to sprite and apply it
 			Sprite emojiSprite = await EmojiConverter.GetEmojiSprite(metadata.emoji);
 			if (emojiSprite != null)
 			{
@@ -69,8 +205,7 @@ public class LLement : PickupableObject
 				AdjustSpriteScale();
 			}
 
-			// Apply scale
-			transform.localScale = Vector3.one * (defaultScale/* * metadata.scale * 1f*/);
+			//transform.localScale = Vector3.one * (defaultScale * metadata.scale);
 
 			if (TryGetComponent<Rigidbody>(out Rigidbody rb))
 			{
@@ -144,6 +279,19 @@ public class LLement : PickupableObject
 		if (emojiRenderer != null && emojiRenderer.sprite != null)
 		{
 			AdjustSpriteScale();
+		}
+		if (nameLabel != null)
+		{
+			AdjustTextScale();
+		}
+	}
+
+	private void OnDestroy()
+	{
+		// Clean up any UI elements if needed
+		if (worldSpaceCanvas != null)
+		{
+			Destroy(worldSpaceCanvas.gameObject);
 		}
 	}
 }

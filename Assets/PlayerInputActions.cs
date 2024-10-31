@@ -89,6 +89,24 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""RotateLeft"",
+                    ""type"": ""Button"",
+                    ""id"": ""063c1f1e-84fe-4672-89a1-ea7b474eea1b"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""RotateRight"",
+                    ""type"": ""Button"",
+                    ""id"": ""c4a90888-aa78-4390-ba1c-7cab1dc07861"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -278,6 +296,28 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
                     ""action"": ""ThrowCharge"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""25dc6867-d65f-475e-9824-4827fce5a7d1"",
+                    ""path"": ""<Keyboard>/q"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""RotateLeft"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""a3dbe776-4046-4ef7-9ac4-ec472d816c72"",
+                    ""path"": ""<Keyboard>/e"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""RotateRight"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -293,6 +333,8 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
         m_Player_Pickup = m_Player.FindAction("Pickup", throwIfNotFound: true);
         m_Player_Interact = m_Player.FindAction("Interact", throwIfNotFound: true);
         m_Player_ThrowCharge = m_Player.FindAction("ThrowCharge", throwIfNotFound: true);
+        m_Player_RotateLeft = m_Player.FindAction("RotateLeft", throwIfNotFound: true);
+        m_Player_RotateRight = m_Player.FindAction("RotateRight", throwIfNotFound: true);
     }
 
     ~@PlayerInputActions()
@@ -366,6 +408,8 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
     private readonly InputAction m_Player_Pickup;
     private readonly InputAction m_Player_Interact;
     private readonly InputAction m_Player_ThrowCharge;
+    private readonly InputAction m_Player_RotateLeft;
+    private readonly InputAction m_Player_RotateRight;
     public struct PlayerActions
     {
         private @PlayerInputActions m_Wrapper;
@@ -377,6 +421,8 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
         public InputAction @Pickup => m_Wrapper.m_Player_Pickup;
         public InputAction @Interact => m_Wrapper.m_Player_Interact;
         public InputAction @ThrowCharge => m_Wrapper.m_Player_ThrowCharge;
+        public InputAction @RotateLeft => m_Wrapper.m_Player_RotateLeft;
+        public InputAction @RotateRight => m_Wrapper.m_Player_RotateRight;
         public InputActionMap Get() { return m_Wrapper.m_Player; }
         public void Enable() { Get().Enable(); }
         public void Disable() { Get().Disable(); }
@@ -407,6 +453,12 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
             @ThrowCharge.started += instance.OnThrowCharge;
             @ThrowCharge.performed += instance.OnThrowCharge;
             @ThrowCharge.canceled += instance.OnThrowCharge;
+            @RotateLeft.started += instance.OnRotateLeft;
+            @RotateLeft.performed += instance.OnRotateLeft;
+            @RotateLeft.canceled += instance.OnRotateLeft;
+            @RotateRight.started += instance.OnRotateRight;
+            @RotateRight.performed += instance.OnRotateRight;
+            @RotateRight.canceled += instance.OnRotateRight;
         }
 
         private void UnregisterCallbacks(IPlayerActions instance)
@@ -432,6 +484,12 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
             @ThrowCharge.started -= instance.OnThrowCharge;
             @ThrowCharge.performed -= instance.OnThrowCharge;
             @ThrowCharge.canceled -= instance.OnThrowCharge;
+            @RotateLeft.started -= instance.OnRotateLeft;
+            @RotateLeft.performed -= instance.OnRotateLeft;
+            @RotateLeft.canceled -= instance.OnRotateLeft;
+            @RotateRight.started -= instance.OnRotateRight;
+            @RotateRight.performed -= instance.OnRotateRight;
+            @RotateRight.canceled -= instance.OnRotateRight;
         }
 
         public void RemoveCallbacks(IPlayerActions instance)
@@ -458,5 +516,7 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
         void OnPickup(InputAction.CallbackContext context);
         void OnInteract(InputAction.CallbackContext context);
         void OnThrowCharge(InputAction.CallbackContext context);
+        void OnRotateLeft(InputAction.CallbackContext context);
+        void OnRotateRight(InputAction.CallbackContext context);
     }
 }

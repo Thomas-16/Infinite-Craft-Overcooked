@@ -10,10 +10,10 @@ using UnityEngine.InputSystem;
 public class Player : MonoBehaviour
 {
     [Header("Camera Zoom Control")]
-    private float cameraZoom = 7.6f;
-    [SerializeField] private float zoomSpeed = 10f;
-    private float minZoom = 3.95f;
-    private float maxZoom = 9.77f;
+    //private float cameraZoom = 7.6f;
+    //[SerializeField] private float zoomSpeed = 10f;
+    //private float minZoom = 3.95f;
+    //private float maxZoom = 9.77f;
 
     //private Queue<float> zoomInputs = new Queue<float>();  // Queue to store the last 5 zoom inputs
     //private int bufferSize = 5;  // Number of frames to average over
@@ -25,6 +25,7 @@ public class Player : MonoBehaviour
     [Header("References")]
     [SerializeField] private Transform holdingObjectTransform;
     [SerializeField] private Transform lookingRaycastPositionTransform;
+    [SerializeField] private Transform launchPos;
 
     [Header("Settings")]
     [SerializeField] private bool debugVisualizeRays = true;
@@ -77,6 +78,12 @@ public class Player : MonoBehaviour
         HandlePickupInput();
         //HandleCameraZoom();
         HandleInteractInput();
+
+        if(debugVisualizeRays) {
+            Debug.DrawRay(transform.position, transform.up * 2f, Color.blue);
+            Debug.DrawRay(transform.position, transform.forward, Color.blue);
+            Debug.DrawRay((holdingObjectTransform.position + transform.position) / 2f + (transform.up * .5f), transform.forward * 0.05f, Color.blue);
+        }
     }
 
     private void HandleInteractInput() {
@@ -120,10 +127,11 @@ public class Player : MonoBehaviour
             }
             else if (isHoldingObject && !justPickedUp && Time.time - pickupInputStartTime >= throwItemInputHoldThreshold) {
                 // Throw the object immediately when the input is held for more than 0.5 seconds
-                //Debug.Log("throwing");
+                Debug.Log("throwing");
                 isHoldingObject = false;
                 pickedupObject.Drop(this);
-                pickedupObject.GetComponent<Rigidbody>().AddExplosionForce(1500f, holdingObjectTransform.position - (transform.forward * 0.2f), 0.5f, 0.1f);
+                pickedupObject.GetComponent<Rigidbody>().AddExplosionForce(5000f, holdingObjectTransform.position - (transform.forward * 0.2f)
+                    , 0.5f, 0.1f);
                 pickedupObject = null;
                 timeLastThrew = Time.time;
 

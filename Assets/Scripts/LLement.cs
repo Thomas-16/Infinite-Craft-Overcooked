@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections;
 using UnityEngine.UI;
 using TMPro;
+using System;
 
 public class LLement : PickupableObject
 {
@@ -14,7 +15,6 @@ public class LLement : PickupableObject
 
 	[Header("Visual Settings")]
 	[SerializeField] private SpriteRenderer emojiRenderer;
-	[SerializeField] private float defaultScale = 1f;
 	[SerializeField] private float spriteSizeMultiplier = 0.3f;
 
 	[Header("UI Settings")]
@@ -29,23 +29,45 @@ public class LLement : PickupableObject
 	[SerializeField] private float fadeInAlpha = 1f;
 	[SerializeField] private float fadeOutAlpha = 0f;
 
+	[Header("Object Settings")]
+	[SerializeField] private BoxCollider boxCollider;
+	[SerializeField] private float baseSize = 1f;
+	[SerializeField] private float spriteScale = 2f;
+
 	private ObjectMetadata metadata;
 	private bool canTriggerMerge = false;
 	private bool hasBeenHeld = false;
 	private bool isMouseOver = false;
 	private float currentAlpha = 0f;
 	private float targetAlpha = 0f;
+	private Vector3 originalScale;
 
 	public GameObject visuals;
 
 	private void Awake()
 	{
-		SetupVisuals();
+		originalScale = transform.localScale;
+		SetupComponents();
 		if (!string.IsNullOrEmpty(ElementName))
 		{
 			SetElementName(ElementName);
 		}
 		UpdateUIAlpha(0f);
+	}
+
+	private void SetupComponents()
+	{
+		if (boxCollider == null)
+		{
+			boxCollider = GetComponent<BoxCollider>();
+			if (boxCollider == null)
+			{
+				boxCollider = gameObject.AddComponent<BoxCollider>();
+			}
+		}
+
+		SetupVisuals();
+		SetupUI();
 	}
 
 	protected override void Update()
@@ -88,7 +110,12 @@ public class LLement : PickupableObject
 		if (existingVisuals != null)
 		{
 			visuals = existingVisuals.gameObject;
-			emojiRenderer = visuals.GetComponentInChildren<SpriteRenderer>();
+			emojiRenderer = visuals.GetComponentInChildren<SpriteRenderer>(true); // Include inactive objects in search
+			if (emojiRenderer != null)
+			{
+				emojiRenderer.gameObject.SetActive(true); // Ensure it's active
+				Debug.Log($"[LLement] Found existing emoji renderer: {emojiRenderer.gameObject.name}, Active: {emojiRenderer.gameObject.activeInHierarchy}");
+			}
 			return;
 		}
 
@@ -106,8 +133,7 @@ public class LLement : PickupableObject
 		SpriteRenderer spriteRenderer = emojiObj.AddComponent<SpriteRenderer>();
 		spriteRenderer.sortingOrder = 1;
 		emojiRenderer = spriteRenderer;
-
-		SetupUI();
+		Debug.Log($"[LLement] Created new emoji renderer: {emojiObj.name}, Active: {emojiObj.activeInHierarchy}");
 	}
 
 	private void SetupUI()
@@ -165,6 +191,7 @@ public class LLement : PickupableObject
 
 	public async void SetElementName(string elementName)
 	{
+		Debug.Log($"[LLement] Setting element name to: {elementName}");
 		ElementName = elementName;
 
 		if (nameLabel != null)
@@ -172,37 +199,83 @@ public class LLement : PickupableObject
 			nameLabel.text = elementName;
 		}
 
-		metadata = await ObjectMetadataAPI.Instance.GetObjectMetadata(elementName);
-
-		if (metadata != null)
+		try
 		{
-			Sprite emojiSprite = await EmojiConverter.GetEmojiSprite(metadata.emoji);
-			if (emojiSprite != null)
-			{
-				emojiRenderer.sprite = emojiSprite;
-				AdjustSpriteScale();
-			}
+			metadata = await ObjectMetadataAPI.Instance.GetObjectMetadata(elementName);
 
-			if (TryGetComponent<Rigidbody>(out Rigidbody rb))
+			if (metadata != null)
 			{
-				//rb.mass = metadata.mass;
+				if (!string.IsNullOrEmpty(metadata.emoji))
+				{
+					Sprite emojiSprite = await EmojiConverter.GetEmojiSprite(metadata.emoji);
+					if (emojiSprite != null)
+					{
+						if (emojiRenderer != null)
+						{
+							emojiRenderer.gameObject.SetActive(true); // Ensure it's active before setting sprite
+							emojiRenderer.sprite = emojiSprite;
+							Debug.Log($"[LLement] Set sprite for {elementName}, Renderer active: {emojiRenderer.gameObject.activeInHierarchy}");
+						}
+						else
+						{
+							Debug.LogError($"[LLement] Emoji renderer is null when trying to set sprite for {elementName}");
+						}
+					}
+				}
+
+				ApplyMetadataScale();
+				AdjustSpriteToCollider();
 			}
+			else
+			{
+				Debug.LogError($"[LLement] Failed to get metadata for {elementName}");
+			}
+		}
+		catch (Exception e)
+		{
+			Debug.LogError($"[LLement] Error setting element name {elementName}: {e.Message}");
 		}
 	}
 
-	private void AdjustSpriteScale()
+	private void ApplyMetadataScale()
 	{
-		if (emojiRenderer == null || emojiRenderer.sprite == null) return;
+		if (metadata == null) return;
 
-		Collider mainCollider = mainColliders[0];
-		if (mainCollider == null) return;
+		//float newSize = baseSize * metadata.scale;
 
-		Bounds bounds = mainCollider.bounds;
-		float smallestDimension = Mathf.Min(bounds.size.x, bounds.size.y);
-		float worldToLocalScale = 1f / transform.lossyScale.x;
-		float targetLocalScale = smallestDimension * worldToLocalScale * spriteSizeMultiplier;
+		boxCollider.size = Vector3.one;
+		//boxCollider.center = Vector3.zero;
 
-		emojiRenderer.transform.localScale = Vector3.one * targetLocalScale;
+		transform.localScale = Vector3.one * GameManager.Instance.SizeConverter(metadata.scale);
+	}
+
+	private void AdjustSpriteToCollider()
+	{
+		if (emojiRenderer == null || emojiRenderer.sprite == null || boxCollider == null)
+		{
+			Debug.LogError($"[LLement] Missing components in AdjustSpriteToCollider - Renderer: {emojiRenderer != null}, Sprite: {emojiRenderer?.sprite != null}, Collider: {boxCollider != null}");
+			return;
+		}
+
+		// Ensure the renderer's GameObject is active
+		if (!emojiRenderer.gameObject.activeInHierarchy)
+		{
+			emojiRenderer.gameObject.SetActive(true);
+			Debug.Log($"[LLement] Activated emoji renderer in AdjustSpriteToCollider");
+		}
+
+		Vector3 colliderSize = boxCollider.size;
+		float smallestDimension = Mathf.Min(colliderSize.x, colliderSize.y);
+
+		float targetSize = smallestDimension * spriteScale;
+
+		Vector2 spriteSize = emojiRenderer.sprite.bounds.size;
+		float maxSpriteSize = Mathf.Max(spriteSize.x, spriteSize.y);
+
+		float scaleFactor = targetSize / maxSpriteSize;
+
+		emojiRenderer.transform.localScale = Vector3.one * scaleFactor;
+		Debug.Log($"[LLement] Adjusted sprite scale to {scaleFactor}, Renderer active: {emojiRenderer.gameObject.activeInHierarchy}");
 	}
 
 	private void OnMouseEnter()
@@ -254,14 +327,35 @@ public class LLement : PickupableObject
 
 	private void OnValidate()
 	{
+		if (boxCollider == null)
+		{
+			boxCollider = GetComponent<BoxCollider>();
+			if (boxCollider == null)
+			{
+				boxCollider = gameObject.AddComponent<BoxCollider>();
+			}
+		}
+
+		// Check for inactive emoji renderer
+		if (emojiRenderer == null)
+		{
+			emojiRenderer = GetComponentInChildren<SpriteRenderer>(true); // Include inactive objects
+			if (emojiRenderer != null)
+			{
+				emojiRenderer.gameObject.SetActive(true);
+				Debug.Log($"[LLement] Found and activated emoji renderer in OnValidate");
+			}
+		}
+
 		if (visuals == null || emojiRenderer == null)
 		{
 			SetupVisuals();
 		}
 
-		if (emojiRenderer != null && emojiRenderer.sprite != null)
+		if (metadata != null)
 		{
-			AdjustSpriteScale();
+			ApplyMetadataScale();
+			AdjustSpriteToCollider();
 		}
 	}
 

@@ -13,27 +13,53 @@ public class GameManager : MonoBehaviour
 	[SerializeField] private GameObject elementPrefab;
 	[SerializeField] private TextAsset allItemsTxt;
 
+	[Header("Basic Resources")]
+	[SerializeField]
+	private List<string> basicResources = new List<string>
+	{
+		"Stick",
+		"Stone",
+		"Leaf",
+	};
+
+	[Header("Spawn Settings")]
+	[SerializeField] private float spawnHeight = 5f;
+	[SerializeField] private float spawnRadius = 10f;
+	[SerializeField] private int resourcesPerType = 5;
+	[SerializeField] private Vector3 spawnCenterOffset = new Vector3(0, 0, 3.5f);
+
 	[Header("Merge Effect Settings")]
 	[SerializeField] private ParticleSystem mergeEffectPrefab;
 	[SerializeField] private float mergeEffectDuration = 1f;
 	[SerializeField] private float mergeEffectScale = 1f;
+	[SerializeField] private int numPositions = 10;
 
 	private void Awake()
 	{
 		Instance = this;
 	}
 
-	private async void Start()
+	private void Start()
 	{
-		Vector3 pos = new Vector3(0, 5f, 3.5f);
-		int numPositions = 40;
-		for (int i = 0; i < numPositions; i++)
-		{
-			Vector3 randomOffset = Random.insideUnitSphere * 3f;
-			Vector3 newPosition = pos + randomOffset;
+		StartCoroutine(SpawnInitialResources());
+	}
 
-			string randomElementName = await GetRandomLineAsync();
-			SpawnElement(randomElementName, newPosition);
+	private IEnumerator SpawnInitialResources()
+	{
+		Vector3 basePosition = new Vector3(0, spawnHeight, 0) + spawnCenterOffset;
+
+		foreach (string resource in basicResources)
+		{
+			for (int i = 0; i < resourcesPerType; i++)
+			{
+				Vector3 randomOffset = Random.insideUnitSphere * spawnRadius;
+				randomOffset.y = 0; // Optional: Keep height consistent
+				Vector3 spawnPosition = basePosition + randomOffset;
+				spawnPosition.y = spawnHeight; // Ensure consistent height
+				
+				SpawnElement(resource, spawnPosition);
+				yield return new WaitForSeconds(0.1f);
+			}
 		}
 	}
 
@@ -118,5 +144,10 @@ public class GameManager : MonoBehaviour
 	public static Vector3 FindMidpoint(Vector3 pointA, Vector3 pointB)
 	{
 		return (pointA + pointB) / 2;
+	}
+
+	public float SizeConverter(float sizeFactor)
+	{
+		return sizeFactor / 4f;
 	}
 }

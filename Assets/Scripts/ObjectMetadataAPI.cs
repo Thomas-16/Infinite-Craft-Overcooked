@@ -56,6 +56,9 @@ public class ObjectMetadataAPI : MonoBehaviour
 
 	private Dictionary<string, ObjectMetadata> cache = new Dictionary<string, ObjectMetadata>();
 
+	[Header("Debug Settings")]
+	[SerializeField] private bool enableDetailedLogging = true;
+
 	private void Awake()
 	{
 		if (Instance != null && Instance != this)
@@ -66,28 +69,43 @@ public class ObjectMetadataAPI : MonoBehaviour
 		Instance = this;
 	}
 
+
 	public async Task<ObjectMetadata> GetObjectMetadata(string objectName)
 	{
+		if (enableDetailedLogging)
+		{
+			Debug.Log($"[Metadata] Requesting metadata for: {objectName}");
+		}
+
 		// Check cache first
 		if (cache.TryGetValue(objectName, out ObjectMetadata cachedMetadata))
 		{
+			if (enableDetailedLogging)
+			{
+				Debug.Log($"[Metadata] Found in cache for {objectName}: {cachedMetadata.emoji}");
+			}
 			return cachedMetadata;
 		}
 
 		if (useOfflineDefaults)
 		{
+			if (enableDetailedLogging)
+			{
+				Debug.Log("[Metadata] Using offline defaults");
+			}
 			return CreateAndCacheDefaultMetadata(objectName);
 		}
 
 		try
 		{
 			string url = BASE_URL + Uri.EscapeDataString(objectName);
+			Debug.Log($"[Metadata] Fetching from URL: {url}");
 
 			using (UnityWebRequest request = UnityWebRequest.Get(url))
 			{
 				request.timeout = Mathf.RoundToInt(requestTimeout);
 
-				// Send request and wait for response
+				Debug.Log($"[Metadata] Sending request for {objectName}...");
 				var operation = request.SendWebRequest();
 
 				while (!operation.isDone)
@@ -96,6 +114,7 @@ public class ObjectMetadataAPI : MonoBehaviour
 						request.result == UnityWebRequest.Result.DataProcessingError ||
 						request.result == UnityWebRequest.Result.ProtocolError)
 					{
+						Debug.LogError($"[Metadata] Request failed mid-operation: {request.error}");
 						break;
 					}
 					await Task.Yield();
@@ -103,28 +122,48 @@ public class ObjectMetadataAPI : MonoBehaviour
 
 				if (request.result != UnityWebRequest.Result.Success)
 				{
-					Debug.LogWarning($"Failed to get metadata for {objectName}, using defaults. Error: {request.error}");
+					Debug.LogError($"[Metadata] Request failed for {objectName}");
+					Debug.LogError($"Error: {request.error}");
+					Debug.LogError($"Response Code: {request.responseCode}");
+					Debug.LogError($"Response Headers: {request.GetResponseHeaders()}");
+					Debug.LogError($"Response Text: {request.downloadHandler?.text}");
 					return CreateAndCacheDefaultMetadata(objectName);
 				}
 
-				// Parse the JSON response
 				string jsonResponse = request.downloadHandler.text;
-				ObjectMetadata metadata = JsonUtility.FromJson<ObjectMetadata>(jsonResponse);
+				Debug.Log($"[Metadata] Received response for {objectName}: {jsonResponse}");
 
-				if (metadata == null)
+				try
 				{
-					Debug.LogWarning($"Failed to parse metadata for {objectName}, using defaults");
+					ObjectMetadata metadata = JsonUtility.FromJson<ObjectMetadata>(jsonResponse);
+
+					if (metadata == null)
+					{
+						Debug.LogError($"[Metadata] Failed to parse JSON for {objectName}");
+						return CreateAndCacheDefaultMetadata(objectName);
+					}
+
+					if (string.IsNullOrEmpty(metadata.emoji))
+					{
+						Debug.LogError($"[Metadata] No emoji in response for {objectName}");
+						return CreateAndCacheDefaultMetadata(objectName);
+					}
+
+					Debug.Log($"[Metadata] Successfully parsed metadata for {objectName}. Emoji: {metadata.emoji}");
+					cache[objectName] = metadata;
+					return metadata;
+				}
+				catch (Exception parseEx)
+				{
+					Debug.LogError($"[Metadata] JSON Parse error for {objectName}: {parseEx.Message}");
+					Debug.LogError($"Raw JSON: {jsonResponse}");
 					return CreateAndCacheDefaultMetadata(objectName);
 				}
-
-				// Cache the result
-				cache[objectName] = metadata;
-				return metadata;
 			}
 		}
 		catch (Exception e)
 		{
-			Debug.LogWarning($"Error fetching metadata for {objectName}: {e.Message}, using defaults");
+			Debug.LogError($"[Metadata] Exception for {objectName}: {e.Message}\nStack: {e.StackTrace}");
 			return CreateAndCacheDefaultMetadata(objectName);
 		}
 	}

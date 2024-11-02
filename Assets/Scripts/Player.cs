@@ -79,6 +79,7 @@ public class Player : MonoBehaviour
 	[SerializeField] private float currentSprintResource;
 	private float sprintRecoveryTimer;
 	private bool canSprint => currentSprintResource > 0f;
+    private Vector3 initialThrowDirection;  // Add this field at class level
 
 	protected virtual void Awake()
 	{
@@ -164,6 +165,7 @@ public class Player : MonoBehaviour
 		}
 	}
 
+/*
 	protected virtual void Update()
 	{
 		if (isChargingThrow)
@@ -175,9 +177,20 @@ public class Player : MonoBehaviour
 		HandleHoverObjects();
 		HandlePickupInput();
 		HandleThrowInput();
-		HandleInteractInput();
 		HandleSprintResource();
-	}
+	}*/
+
+    protected virtual void Update()
+    {
+        HandleMovement();
+        HandleHoverObjects();
+        HandlePickupInput();
+        
+        if (isChargingThrow)
+        {
+            UpdateThrowCharge();
+        }
+    }
 
 	private void HandleSprintResource()
 	{
@@ -217,30 +230,37 @@ public class Player : MonoBehaviour
 		}
 	}
 
-	private void HandleMovement()
-	{
-		Vector2 inputMove = InputManager.Instance.GetMovementInputVector();
-		Vector3 movementDirection = Vector3.zero;
+    private void HandleMovement()
+    {
+        Vector2 inputMove = InputManager.Instance.GetMovementInputVector();
+        Vector3 movementDirection = Vector3.zero;
 
-		movementDirection += Vector3.right * inputMove.x;
-		movementDirection += Vector3.forward * inputMove.y;
+        movementDirection += Vector3.right * inputMove.x;
+        movementDirection += Vector3.forward * inputMove.y;
 
-		if (_character.cameraTransform)
-		{
-			movementDirection = movementDirection.relativeTo(_character.cameraTransform, _character.GetUpVector());
+        if (_character.cameraTransform)
+        {
+            movementDirection = movementDirection.relativeTo(_character.cameraTransform, _character.GetUpVector());
 
-			if (isChargingThrow)
-			{
-				movementDirection *= moveSpeedMultiplierWhileThrowing;
-			}
+            if (isChargingThrow)
+            {
+                // Still apply move speed reduction while charging
+                movementDirection *= moveSpeedMultiplierWhileThrowing;
+                
+                // When moving, use movement direction for throw direction
+                if (movementDirection.magnitude > 0.1f)
+                {
+                    transform.rotation = Quaternion.LookRotation(movementDirection);
+                }
+            }
 
-			if (isSprinting && movementDirection.magnitude > 0.1f && !isChargingThrow)
-			{
-				movementDirection *= sprintSpeedMultiplier;
-			}
-		}
-		_character.SetMovementDirection(movementDirection);
-	}
+            if (isSprinting && movementDirection.magnitude > 0.1f && !isChargingThrow)
+            {
+                movementDirection *= sprintSpeedMultiplier;
+            }
+        }
+        _character.SetMovementDirection(movementDirection);
+    }
 
 	private void UpdateRotationTowardsMouse()
 	{
@@ -262,148 +282,174 @@ public class Player : MonoBehaviour
 		}
 	}
 
-	private void HandleThrowInput()
-	{
-		if (isHoldingObject)
-		{
-			if (InputManager.Instance.GetMouseRightButtonDown() && !isChargingThrow)
-			{
-				StartThrowCharge();
-			}
-			else if (InputManager.Instance.GetMouseRightButton() && isChargingThrow)
-			{
-				UpdateThrowCharge();
-			}
-			else if (InputManager.Instance.GetMouseRightButtonUp() && isChargingThrow)
-			{
-				ReleaseThrow();
-			}
-		}
-	}
+    private void HandleThrowInput()
+    {
+        if (isHoldingObject)
+        {
+            // Start charging if holding F long enough after pickup
+            bool shouldStartCharge = pickupInputActive && Time.time - pickupInputStartTime > 0.2f && !isChargingThrow;
+            
+            // If we were charging and released F
+            bool shouldThrow = !pickupInputActive && isChargingThrow;
+            
+            if (shouldStartCharge)
+            {
+                StartThrowCharge();
+            }
+            else if (pickupInputActive && isChargingThrow)
+            {
+                UpdateThrowCharge();
+            }
+            else if (shouldThrow)
+            {
+                ReleaseThrow();
+            }
+        }
+    }
 
-	private void StartThrowCharge()
-	{
-		isChargingThrow = true;
-		throwChargeStartTime = Time.time;
+    private void StartThrowCharge()
+    {
+        isChargingThrow = true;
+        throwChargeStartTime = Time.time;
 
-		if (chargingParticleSystem != null)
-		{
-			chargingParticleSystem.transform.position = pickedupObject.transform.position;
-			chargingParticleSystem.Play();
-		}
-	}
+        if (chargingParticleSystem != null)
+        {
+            chargingParticleSystem.transform.position = pickedupObject.transform.position;
+            chargingParticleSystem.Play();
+        }
 
-	private void UpdateThrowCharge()
-	{
-		float chargeTime = Mathf.Min(Time.time - throwChargeStartTime, maxChargeTime);
-		float chargePercent = chargeTime / maxChargeTime;
+        if (throwPowerBar != null)
+        {
+            throwPowerBar.UpdatePowerBar(0f, true);
+        }
+    }
 
-		if (throwPowerBar != null)
-		{
-			throwPowerBar.UpdatePowerBar(chargePercent, isChargingThrow);
-		}
+    private void UpdateThrowCharge()
+    {
+        if (!isChargingThrow) return;
 
-		if (chargingParticleSystem != null)
-		{
-			chargingParticleSystem.transform.position = pickedupObject.transform.position;
-			float emissionRate = chargingParticlesCurve.Evaluate(chargePercent);
-			emissionModule.rateOverTime = emissionRate * 50f;
-		}
-	}
+        float chargeTime = Mathf.Min(Time.time - throwChargeStartTime, maxChargeTime);
+        float chargePercent = chargeTime / maxChargeTime;
 
-	private void ReleaseThrow()
-	{
-		float chargeTime = Mathf.Min(Time.time - throwChargeStartTime, maxChargeTime);
-		float chargePercent = chargeTime / maxChargeTime;
-		float throwForce = Mathf.Lerp(minThrowForce, maxThrowForce, chargePercent);
+        if (throwPowerBar != null)
+        {
+            throwPowerBar.UpdatePowerBar(chargePercent, true);
+        }
 
-		Vector3 throwDirection = transform.forward + (Vector3.up * throwUpwardAngle);
-		throwDirection.Normalize();
+        if (chargingParticleSystem != null)
+        {
+            chargingParticleSystem.transform.position = pickedupObject.transform.position;
+            float emissionRate = chargingParticlesCurve.Evaluate(chargePercent);
+            emissionModule.rateOverTime = emissionRate * 50f;
+        }
+    }
 
-		isHoldingObject = false;
-		pickedupObject.Drop(this);
-		pickedupObject.GetComponent<Rigidbody>().AddForce(throwDirection * throwForce);
-		pickedupObject = null;
+    private void ReleaseThrow()
+    {
+        float chargeTime = Mathf.Min(Time.time - throwChargeStartTime, maxChargeTime);
+        float chargePercent = chargeTime / maxChargeTime;
+        float throwForce = Mathf.Lerp(minThrowForce, maxThrowForce, chargePercent);
 
-		isChargingThrow = false;
-		if (throwPowerBar != null)
-		{
-			throwPowerBar.UpdatePowerBar(0f, false);
-		}
+        Vector3 throwDirection = transform.forward + (Vector3.up * throwUpwardAngle);
+        throwDirection.Normalize();
 
-		if (chargingParticleSystem != null)
-		{
-			chargingParticleSystem.Stop();
-		}
-	}
+        isHoldingObject = false;
+        pickedupObject.Drop(this);
+        pickedupObject.GetComponent<Rigidbody>().AddForce(throwDirection * throwForce);
+        pickedupObject = null;
+
+        isChargingThrow = false;
+        
+        if (throwPowerBar != null)
+        {
+            throwPowerBar.UpdatePowerBar(0f, false);
+        }
+
+        if (chargingParticleSystem != null)
+        {
+            chargingParticleSystem.Stop();
+        }
+    }
 
 	private void HandleHoverObjects()
-	{
-		RaycastHit[] raycastHits = coneCastHelper.ConeCast(lookingRaycastPositionTransform.position, transform.forward, raycastDistance);
-		if (debugVisualizeRays)
-		{
-			foreach (var hit in raycastHits)
-			{
-				Debug.DrawLine(lookingRaycastPositionTransform.position, hit.point, Color.red);
-			}
-		}
+    {
+        // Clear previous hover if we had one and didn't find it in this frame
+        if (hoveringObject != null)
+        {
+            hoveringObject.ClearHover();
+            hoveringObject = null;
+        }
 
-		foreach (RaycastHit hit in raycastHits)
-		{
-			PickupableObject pickupableObject = hit.collider.GetComponentInParent<PickupableObject>();
-			if (pickupableObject != null && !pickupableObject.IsPickedUp)
-			{
-				pickupableObject.HoverOver(this);
-				hoveringObject = pickupableObject;
-				return;
-			}
-		}
-		hoveringObject = null;
-	}
+        RaycastHit[] raycastHits = coneCastHelper.ConeCast(lookingRaycastPositionTransform.position, transform.forward, raycastDistance);
+        if (debugVisualizeRays)
+        {
+            foreach (var hit in raycastHits)
+            {
+                Debug.DrawLine(lookingRaycastPositionTransform.position, hit.point, Color.red);
+            }
+        }
+
+        foreach (RaycastHit hit in raycastHits)
+        {
+            PickupableObject pickupableObject = hit.collider.GetComponentInParent<PickupableObject>();
+            if (pickupableObject != null && !pickupableObject.IsPickedUp)
+            {
+                pickupableObject.HoverOver(this);
+                hoveringObject = pickupableObject;
+                return;
+            }
+        }
+    }
 
 	private void HandlePickupInput()
-	{
-		if (InputManager.Instance.GetPickupInput())
-		{
-			if (!pickupInputActive)
-			{
-				pickupInputActive = true;
-				pickupInputStartTime = Time.time;
+    {
+        if (InputManager.Instance.GetPickupInput()) // F button pressed
+        {
+            if (!pickupInputActive)
+            {
+                pickupInputActive = true;
+                pickupInputStartTime = Time.time;
+            }
+            
+            // Check for long hold (0.2s) to start charging
+            if (isHoldingObject && !isChargingThrow && Time.time - pickupInputStartTime >= 0.2f)
+            {
+                StartThrowCharge();
+            }
+        }
+        else // F button released
+        {
+            if (pickupInputActive)
+            {
+                if (isChargingThrow)
+                {
+                    // If we were charging, throw
+                    ReleaseThrow();
+                }
+                else if (Time.time - pickupInputStartTime < 0.2f)
+                {
+                    // Quick tap - toggle pickup/drop
+                    if (!isHoldingObject && hoveringObject != null)
+                    {
+                        // Pickup
+                        isHoldingObject = true;
+                        hoveringObject.GetComponent<Rigidbody>().isKinematic = true;
+                        hoveringObject.Pickup(this);
+                        pickedupObject = hoveringObject;
+                    }
+                    else if (isHoldingObject)
+                    {
+                        // Drop
+                        isHoldingObject = false;
+                        pickedupObject.Drop(this);
+                        pickedupObject = null;
+                    }
+                }
+            }
+            pickupInputActive = false;
+        }
+    }
 
-				if (isHoldingObject)
-				{
-					isHoldingObject = false;
-					pickedupObject.Drop(this);
-					pickedupObject = null;
-				}
-				else if (hoveringObject != null)
-				{
-					isHoldingObject = true;
-					hoveringObject.GetComponent<Rigidbody>().isKinematic = true;
-					hoveringObject.Pickup(this);
-					pickedupObject = hoveringObject;
-					justPickedUp = true;
-				}
-			}
-		}
-		else if (pickupInputActive)
-		{
-			pickupInputActive = false;
-			justPickedUp = false;
-		}
-	}
-
-	private void HandleInteractInput()
-	{
-		if (InputManager.Instance.GetInteractPressed())
-		{
-			interactInputActive = true;
-		}
-		if (InputManager.Instance.GetInteractReleased())
-		{
-			interactInputActive = false;
-		}
-	}
 
 	private void OnSprintPressed(InputAction.CallbackContext context)
 	{

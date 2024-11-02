@@ -120,18 +120,18 @@ public class LLement : PickupableObject
 	}
 
 	protected override void Update()
-	{
-		base.Update();
+    {
+        base.Update();
 
-		bool shouldBeVisible = HoveringPlayer != null || IsPickedUp || isMouseOver;
-		targetAlpha = shouldBeVisible ? fadeInAlpha : fadeOutAlpha;
+        bool shouldBeVisible = HoveringPlayer != null || IsPickedUp || isMouseOver;
+        targetAlpha = shouldBeVisible ? fadeInAlpha : fadeOutAlpha;
 
-		if (currentAlpha != targetAlpha)
-		{
-			currentAlpha = Mathf.MoveTowards(currentAlpha, targetAlpha, fadeSpeed * Time.deltaTime);
-			UpdateUIAlpha(currentAlpha);
-		}
-	}
+        if (currentAlpha != targetAlpha)
+        {
+            currentAlpha = Mathf.MoveTowards(currentAlpha, targetAlpha, fadeSpeed * Time.deltaTime);
+            UpdateUIAlpha(currentAlpha);
+        }
+    }
 
 	private void UpdateUIAlpha(float alpha)
 	{

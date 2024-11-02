@@ -72,7 +72,7 @@ public class UIPanel : MonoBehaviour
 		backgroundPanel.rectTransform.sizeDelta = finalSize;
 		RectTransform.sizeDelta = finalSize;
 
-		Debug.Log($"Text size: {textSize}, Final panel size: {finalSize}");
+		//Debug.Log($"Text size: {textSize}, Final panel size: {finalSize}");
 	}
 
 	public void SetPanelColor(Color color)

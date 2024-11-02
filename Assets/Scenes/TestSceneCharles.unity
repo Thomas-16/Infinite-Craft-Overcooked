@@ -21123,6 +21123,37 @@ Canvas:
   m_SortingLayerID: 0
   m_SortingOrder: 0
   m_TargetDisplay: 0
+--- !u!1 &1689745636
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1689745637}
+  m_Layer: 0
+  m_Name: Sprint Bar Reference Point
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1689745637
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1689745636}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: -0.52, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1957408971}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1693218987
 GameObject:
   m_ObjectHideFlags: 0
@@ -24341,6 +24372,7 @@ Transform:
   - {fileID: 1258962830}
   - {fileID: 1049484765}
   - {fileID: 1137935113}
+  - {fileID: 1689745637}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1957408972
@@ -24362,6 +24394,19 @@ MonoBehaviour:
   numRaycastRays: 35
   raycastDistance: 1.4
   mergeItemsInputHoldThreshold: 0.6
+  sprintSpeedMultiplier: 1.75
+  maxSprintResource: 100
+  sprintDrainRate: 25
+  sprintRecoveryRate: 15
+  sprintRecoveryDelay: 1
+  sprintBarPanelPrefab: {fileID: 6811813811702295346, guid: c77177b7f8c905442a366c10b1d82a27,
+    type: 3}
+  sprintBarTransformReference: {fileID: 1689745637}
+  playerName: Chilly
+  nametagOffset: 3
+  nametagColor: {r: 0.18431373, g: 0.59607846, b: 1, a: 1}
+  nametagPrefab: {fileID: 5866927224844126252, guid: d6b84d9af1e96a043a3033c669d31f63,
+    type: 3}
   minThrowForce: 100
   maxThrowForce: 1000
   maxChargeTime: 1
@@ -24400,6 +24445,7 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+  currentSprintResource: 0
 --- !u!1 &1981923318
 GameObject:
   m_ObjectHideFlags: 0

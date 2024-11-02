@@ -44,7 +44,7 @@ public class InputManager : MonoBehaviour
 		return Mathf.Clamp(inputActions.Player.CameraZoom.ReadValue<float>(), -110f, 110f);
 	}
 
-	// New methods for throw charging
+	// Throw charging methods
 	public bool GetMouseRightButtonDown()
 	{
 		return inputActions.Player.ThrowCharge.WasPressedThisFrame();
@@ -58,5 +58,21 @@ public class InputManager : MonoBehaviour
 	public bool GetMouseRightButtonUp()
 	{
 		return inputActions.Player.ThrowCharge.WasReleasedThisFrame();
+	}
+
+	// Sprint methods
+	public bool GetSprintInput()
+	{
+		return inputActions.Player.Sprint.IsPressed();
+	}
+
+	public bool GetSprintPressed()
+	{
+		return inputActions.Player.Sprint.WasPressedThisFrame();
+	}
+
+	public bool GetSprintReleased()
+	{
+		return inputActions.Player.Sprint.WasReleasedThisFrame();
 	}
 }

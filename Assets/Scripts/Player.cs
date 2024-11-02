@@ -20,6 +20,21 @@ public class Player : MonoBehaviour
 	[SerializeField] private float raycastDistance = 1.25f;
 	[SerializeField] private float mergeItemsInputHoldThreshold = .75f;
 
+	[Header("Sprint Settings")]
+	[SerializeField] private float sprintSpeedMultiplier = 2f;
+	[SerializeField] private float maxSprintResource = 100f;
+	[SerializeField] private float sprintDrainRate = 25f;    // Units per second
+	[SerializeField] private float sprintRecoveryRate = 15f; // Units per second
+	[SerializeField] private float sprintRecoveryDelay = 1f; // Seconds to wait before recovery starts
+	[SerializeField] private UIPanel sprintBarPanelPrefab;
+	[SerializeField] private Transform sprintBarTransformReference;
+
+	[Header("Nametag Settings")]
+	[SerializeField] private string playerName = "Player";
+	[SerializeField] private float nametagOffset = 2.5f;
+	[SerializeField] private Color nametagColor = Color.white;
+	[SerializeField] private UIPanel nametagPrefab;
+
 	[Header("Throwing Settings")]
 	[SerializeField] private float minThrowForce = 500f;
 	[SerializeField] private float maxThrowForce = 2000f;
@@ -27,8 +42,6 @@ public class Player : MonoBehaviour
 	[SerializeField] private float throwUpwardAngle = 0.1f;
 	[SerializeField] private float rotationSpeed = 720f;
 	[SerializeField] private LayerMask groundLayer;
-
-	[Header("Movement Settings")]
 	[SerializeField] private float moveSpeedMultiplierWhileThrowing = 0.8f;
 
 	[Header("Throw Visual Feedback")]
@@ -57,6 +70,17 @@ public class Player : MonoBehaviour
 	private Camera mainCamera;
 	private ConeCastHelper coneCastHelper;
 
+	private UIPanel nametagPanel;
+
+	private float defaultWalkSpeed;
+	private bool isSprinting;
+	private SprintBar sprintBar;
+	private UIPanel sprintBarPanel;
+
+	[SerializeField] private float currentSprintResource;
+	private float sprintRecoveryTimer;
+	private bool canSprint => currentSprintResource > 0f;
+
 	protected virtual void Awake()
 	{
 		_character = GetComponent<Character>();
@@ -83,6 +107,144 @@ public class Player : MonoBehaviour
 		InputManager.Instance.inputActions.Player.Crouch.canceled += OnCrouchReleased;
 		InputManager.Instance.inputActions.Player.Jump.started += OnJumpPressed;
 		InputManager.Instance.inputActions.Player.Jump.canceled += OnJumpReleased;
+		InputManager.Instance.inputActions.Player.Sprint.started += OnSprintPressed;
+		InputManager.Instance.inputActions.Player.Sprint.canceled += OnSprintReleased;
+
+		SetupNametag();
+
+		defaultWalkSpeed = _character.maxWalkSpeed;
+		currentSprintResource = maxSprintResource;
+		SetupSprintBar();
+	}
+
+	private void SetupSprintBar()
+	{
+		if (UIManager.Instance != null)
+		{
+			sprintBarPanel = UIManager.Instance.CreateWorldPositionedPanel(
+				sprintBarTransformReference,
+				sprintBarPanelPrefab,
+				Vector3.zero
+			);
+
+			sprintBar = sprintBarPanel.GetComponent<SprintBar>();
+
+			if (sprintBarPanel != null)
+			{
+				UpdateSprintBarUI();
+			}
+		}
+	}
+
+	private void HandleSprintResource()
+	{
+		if (isSprinting && canSprint)
+		{
+			// Drain sprint resource
+			currentSprintResource = Mathf.Max(0f, currentSprintResource - (sprintDrainRate * Time.deltaTime));
+			sprintRecoveryTimer = 0f;
+
+			// Force stop sprinting if resource is depleted
+			if (!canSprint)
+			{
+				StopSprinting();
+			}
+		}
+		else
+		{
+			// Handle recovery timer
+			if (sprintRecoveryTimer < sprintRecoveryDelay)
+			{
+				sprintRecoveryTimer += Time.deltaTime;
+			}
+			else if (currentSprintResource < maxSprintResource)
+			{
+				// Recover sprint resource
+				currentSprintResource = Mathf.Min(maxSprintResource,
+					currentSprintResource + (sprintRecoveryRate * Time.deltaTime));
+			}
+		}
+
+		UpdateSprintBarUI();
+	}
+
+	private void UpdateSprintBarUI()
+	{
+		if (sprintBar != null)
+		{
+			float sprintPercentage = currentSprintResource / maxSprintResource;
+			bool isRecovering = !isSprinting && sprintPercentage < 1f;
+			sprintBar.UpdateSprintBar(sprintPercentage, isSprinting, isRecovering);
+		}
+	}
+
+	private void OnSprintPressed(InputAction.CallbackContext context)
+	{
+		if (_character.IsWalking() && !_character.IsCrouched() && canSprint)
+		{
+			isSprinting = true;
+			_character.maxWalkSpeed = defaultWalkSpeed * sprintSpeedMultiplier;
+		}
+	}
+
+	private void OnSprintReleased(InputAction.CallbackContext context)
+	{
+		StopSprinting();
+	}
+
+	private void StopSprinting()
+	{
+		if (isSprinting)
+		{
+			isSprinting = false;
+			_character.maxWalkSpeed = defaultWalkSpeed;
+		}
+	}
+
+	private void SetupNametag()
+	{
+		if (UIManager.Instance != null)
+		{
+			nametagPanel = UIManager.Instance.CreateWorldPositionedPanel(
+				transform,
+				nametagPrefab,  // You'll need to add this prefab reference to UIManager
+				new Vector3(0, nametagOffset, 0)
+			);
+
+			if (nametagPanel != null)
+			{
+				// Set initial nametag text and color
+				nametagPanel.SetText(playerName);
+				nametagPanel.SetTextColor(Color.white);
+				nametagPanel.SetPanelColor(nametagColor);
+			}
+		}
+	}
+
+	private void OnDestroy()
+	{
+		if (UIManager.Instance != null)
+		{
+			if (nametagPanel != null)
+				UIManager.Instance.RemoveWorldPositionedPanel(transform);
+			if (sprintBarPanel != null)
+				UIManager.Instance.RemoveWorldPositionedPanel(transform);
+		}
+	}
+
+
+	// Getter/setter for player name that updates the UI
+	public string PlayerName
+	{
+		get => playerName;
+		set
+		{
+			playerName = value;
+			if (nametagPanel != null)
+			{
+				nametagPanel.SetText(value);
+			}
+		}
 	}
 
 	protected virtual void Update()
@@ -97,6 +259,7 @@ public class Player : MonoBehaviour
 		HandlePickupInput();
 		HandleThrowInput();
 		HandleInteractInput();
+		HandleSprintResource();
 	}
 
 	private void HandleMovement()
@@ -111,12 +274,17 @@ public class Player : MonoBehaviour
 		{
 			movementDirection = movementDirection.relativeTo(_character.cameraTransform, _character.GetUpVector());
 
+			// Apply movement modifiers
 			if (isChargingThrow)
 			{
 				movementDirection *= moveSpeedMultiplierWhileThrowing;
 			}
-		}
 
+			if (isSprinting && movementDirection.magnitude > 0.1f && !isChargingThrow)
+			{
+				movementDirection *= sprintSpeedMultiplier;
+			}
+		}
 		_character.SetMovementDirection(movementDirection);
 	}
 

@@ -13,22 +13,17 @@ public class GoalZone : MonoBehaviour
 	[Header("Goal Settings")]
 	[SerializeField] private int requiredItems = 5;
 
-	private string alienTastes;
+	[Header("UI Settings")]
+	[SerializeField] private UIPanel progressUIPrefab;
+
 	private int acceptedItems = 0;
 	private bool isProcessing = false;
 	private HashSet<LLement> processedElements = new HashSet<LLement>();
-	private UIPanel mainPanel;
 	private UIPanel progressPanel;
 
-	[SerializeField] private UIPanel progressUIPrefab;
-	[SerializeField] private UIPanel dialogueUIPrefab;
-
-	[SerializeField] private Transform dialogueReference;
-
-	private async void Start()
+	private void Start()
 	{
 		SetupZone();
-		await GenerateAlienTastes();
 		UpdateProgressUI();
 	}
 
@@ -44,42 +39,16 @@ public class GoalZone : MonoBehaviour
 			}
 		}
 
-		// Create UI panels
-		mainPanel = UIManager.Instance.CreateWorldPositionedPanel(dialogueReference, dialogueUIPrefab, Vector3.zero);
+		// Create progress UI panel
 		progressPanel = UIManager.Instance.CreateWorldPositionedPanel(transform, progressUIPrefab, Vector3.zero);
 
-		// Initial setup of panels
-		if (mainPanel != null)
-		{
-			mainPanel.SetText("Awaiting alien preferences...");
-		}
-
+		// Initial setup of progress panel
 		if (progressPanel != null)
 		{
-			progressPanel.SetText("Satisfied: 0/" + requiredItems);
-			// Optionally set different colors/styles for progress panel
+			progressPanel.SetText($"Offerings: 0/{requiredItems}");
 			progressPanel.SetPanelColor(new Color(0, 0, 0, 0.7f));
 			progressPanel.SetTextColor(Color.white);
 		}
-	}
-
-	private async Task GenerateAlienTastes()
-	{
-		string prompt = "You are an alien food critic with very specific tastes. Describe your preferences for Earth objects in 2-3 sentences. " +
-					   "Keep the sentences short. Include a line break after every phrase. " +
-					   "Include specific characteristics you love and hate. Be creative but consistent. " +
-					   "For example: 'I adore things made of wood \n " +
-					   "that remind me of my marshy homeworld, \n especially if they're squishy. \n " +
-					   "I despise anything metallic or artificial.'";
-
-		alienTastes = await ChatGPTClient.Instance.SendChatRequest(prompt);
-
-		if (mainPanel != null)
-		{
-			mainPanel.SetText("Alien: " + alienTastes);
-		}
-
-		Debug.Log($"[GoalZone] Alien's tastes: {alienTastes}");
 	}
 
 	private void OnTriggerEnter(Collider other)
@@ -95,30 +64,25 @@ public class GoalZone : MonoBehaviour
 
 	private async void EvaluateElement(LLement element)
 	{
-		Debug.Log("evaluate element: " + element.ElementName);
+		Debug.Log("Evaluating element: " + element.ElementName);
 		isProcessing = true;
 		processedElements.Add(element);
 
-		string prompt = $"Based on your stated preferences: '{alienTastes}'\n" +
-					   $"Would you eat a {element.ElementName}? Consider the object's properties and your established tastes.\n" +
-					   $"Reply with ONLY 'YES' or 'NO' followed by a brief one-sentence explanation.";
-
-		string response = await ChatGPTClient.Instance.SendChatRequest(prompt);
-		bool isAccepted = response.Trim().StartsWith("YES", System.StringComparison.OrdinalIgnoreCase);
+		var (isAccepted, response) = await GodMessages.Instance.EvaluateOffering(element.ElementName);
 
 		if (isAccepted)
 		{
-			HandleAcceptedElement(element, response);
+			HandleAcceptedElement(element);
 		}
 		else
 		{
-			HandleRejectedElement(element, response);
+			HandleRejectedElement(element);
 		}
 
 		isProcessing = false;
 	}
 
-	private async void HandleAcceptedElement(LLement element, string response)
+	private async void HandleAcceptedElement(LLement element)
 	{
 		acceptedItems++;
 		UpdateProgressUI();
@@ -134,17 +98,10 @@ public class GoalZone : MonoBehaviour
 		await Task.Delay((int)(effectDuration * 1000));
 		Destroy(element.gameObject);
 
-		if (mainPanel != null)
-		{
-			mainPanel.SetText("Alien: " + response);
-		}
-
-		Debug.Log("HandleAcceptedElement: " + element.ElementName + ", response: " + response);
-
 		CheckWinCondition();
 	}
 
-	private async void HandleRejectedElement(LLement element, string response)
+	private void HandleRejectedElement(LLement element)
 	{
 		if (rejectEffect != null)
 		{
@@ -159,13 +116,6 @@ public class GoalZone : MonoBehaviour
 			rb.AddForce(pushDirection * 6f + Vector3.up * 3f, ForceMode.Impulse);
 		}
 
-		if (mainPanel != null)
-		{
-			mainPanel.SetText("Alien: " + response);
-		}
-
-		Debug.Log("HandleRejectedElement: " + element.ElementName + ", response: " + response);
-
 		processedElements.Remove(element);
 	}
 
@@ -173,7 +123,7 @@ public class GoalZone : MonoBehaviour
 	{
 		if (progressPanel != null)
 		{
-			progressPanel.SetText($"Satisfied: {acceptedItems}/{requiredItems}");
+			progressPanel.SetText($"Offerings: {acceptedItems}/{requiredItems}");
 		}
 	}
 
@@ -181,10 +131,11 @@ public class GoalZone : MonoBehaviour
 	{
 		if (acceptedItems >= requiredItems)
 		{
-			if (mainPanel != null)
-			{
-				mainPanel.SetText("Alien: Thank you! I am satisfied!");
-			}
+			GodMessages.Instance.QueueMessage(
+				"Your offerings have pleased me. You may go in peace!",
+				Color.white,
+				new Color(0.1f, 0.3f, 0.1f, 0.8f)
+			);
 			Debug.Log("[GoalZone] Win condition met!");
 			// Add any additional win condition handling here
 		}
@@ -193,16 +144,9 @@ public class GoalZone : MonoBehaviour
 	private void OnDestroy()
 	{
 		// Clean up UI panels
-		if (UIManager.Instance != null)
+		if (UIManager.Instance != null && progressPanel != null)
 		{
-			if (mainPanel != null)
-			{
-				UIManager.Instance.RemoveWorldPositionedPanel(transform);
-			}
-			if (progressPanel != null)
-			{
-				UIManager.Instance.RemoveWorldPositionedPanel(transform);
-			}
+			UIManager.Instance.RemoveWorldPositionedPanel(transform);
 		}
 	}
 

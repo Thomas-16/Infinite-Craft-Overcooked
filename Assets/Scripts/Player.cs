@@ -2,10 +2,8 @@ using Cinemachine;
 using ECM2;
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.UI;
 
 public class Player : MonoBehaviour
 {
@@ -43,14 +41,13 @@ public class Player : MonoBehaviour
 	[SerializeField] private float rotationSpeed = 720f;
 	[SerializeField] private LayerMask groundLayer;
 	[SerializeField] private float moveSpeedMultiplierWhileThrowing = 0.8f;
-
-	[Header("Throw Visual Feedback")]
-	[SerializeField] private GameObject throwPowerUIPanel;
-	[SerializeField] private Image throwPowerFillBar;
 	[SerializeField] private ParticleSystem chargingParticleSystem;
-	[SerializeField] private Color minChargeColor = Color.yellow;
-	[SerializeField] private Color maxChargeColor = Color.red;
-	[SerializeField] private AnimationCurve chargingParticlesCurve = AnimationCurve.EaseInOut(0, 0.5f, 1, 2f);
+	[SerializeField] private AnimationCurve chargingParticlesCurve = new AnimationCurve(new Keyframe(0, 0.5f), new Keyframe(1, 2f));
+	[SerializeField] private Transform powerBarTransformReference;
+
+	[Header("Throw UI Settings")]
+	[SerializeField] private UIPanel throwPowerBarPrefab;
+	[SerializeField] private float throwBarOffset = 1.75f;
 
 	private PickupableObject hoveringObject;
 	private PickupableObject pickedupObject;
@@ -62,6 +59,8 @@ public class Player : MonoBehaviour
 	private float throwChargeStartTime;
 	private bool isChargingThrow = false;
 	private ParticleSystem.EmissionModule emissionModule;
+	private UIPanel throwPowerBarPanel;
+	private ThrowPowerBar throwPowerBar;
 
 	private float lastTriedToMergeTime;
 	private bool interactInputActive;
@@ -94,11 +93,6 @@ public class Player : MonoBehaviour
 			emissionModule = chargingParticleSystem.emission;
 			chargingParticleSystem.Stop();
 		}
-
-		if (throwPowerUIPanel != null)
-		{
-			throwPowerUIPanel.SetActive(false);
-		}
 	}
 
 	protected virtual void Start()
@@ -111,10 +105,25 @@ public class Player : MonoBehaviour
 		InputManager.Instance.inputActions.Player.Sprint.canceled += OnSprintReleased;
 
 		SetupNametag();
+		SetupSprintBar();
+		SetupThrowUI();
 
 		defaultWalkSpeed = _character.maxWalkSpeed;
 		currentSprintResource = maxSprintResource;
-		SetupSprintBar();
+	}
+
+	private void SetupThrowUI()
+	{
+		if (UIManager.Instance != null)
+		{
+			throwPowerBarPanel = UIManager.Instance.CreateWorldPositionedPanel(
+				powerBarTransformReference,
+				throwPowerBarPrefab,
+				Vector3.zero
+			);
+
+			throwPowerBar = throwPowerBarPanel.GetComponent<ThrowPowerBar>();
+		}
 	}
 
 	private void SetupSprintBar()
@@ -136,113 +145,21 @@ public class Player : MonoBehaviour
 		}
 	}
 
-	private void HandleSprintResource()
-	{
-		if (isSprinting && canSprint)
-		{
-			// Drain sprint resource
-			currentSprintResource = Mathf.Max(0f, currentSprintResource - (sprintDrainRate * Time.deltaTime));
-			sprintRecoveryTimer = 0f;
-
-			// Force stop sprinting if resource is depleted
-			if (!canSprint)
-			{
-				StopSprinting();
-			}
-		}
-		else
-		{
-			// Handle recovery timer
-			if (sprintRecoveryTimer < sprintRecoveryDelay)
-			{
-				sprintRecoveryTimer += Time.deltaTime;
-			}
-			else if (currentSprintResource < maxSprintResource)
-			{
-				// Recover sprint resource
-				currentSprintResource = Mathf.Min(maxSprintResource,
-					currentSprintResource + (sprintRecoveryRate * Time.deltaTime));
-			}
-		}
-
-		UpdateSprintBarUI();
-	}
-
-	private void UpdateSprintBarUI()
-	{
-		if (sprintBar != null)
-		{
-			float sprintPercentage = currentSprintResource / maxSprintResource;
-			bool isRecovering = !isSprinting && sprintPercentage < 1f;
-			sprintBar.UpdateSprintBar(sprintPercentage, isSprinting, isRecovering);
-		}
-	}
-
-	private void OnSprintPressed(InputAction.CallbackContext context)
-	{
-		if (_character.IsWalking() && !_character.IsCrouched() && canSprint)
-		{
-			isSprinting = true;
-			_character.maxWalkSpeed = defaultWalkSpeed * sprintSpeedMultiplier;
-		}
-	}
-
-	private void OnSprintReleased(InputAction.CallbackContext context)
-	{
-		StopSprinting();
-	}
-
-	private void StopSprinting()
-	{
-		if (isSprinting)
-		{
-			isSprinting = false;
-			_character.maxWalkSpeed = defaultWalkSpeed;
-		}
-	}
-
 	private void SetupNametag()
 	{
 		if (UIManager.Instance != null)
 		{
 			nametagPanel = UIManager.Instance.CreateWorldPositionedPanel(
 				transform,
-				nametagPrefab,  // You'll need to add this prefab reference to UIManager
+				nametagPrefab,
 				new Vector3(0, nametagOffset, 0)
 			);
 
 			if (nametagPanel != null)
 			{
-				// Set initial nametag text and color
 				nametagPanel.SetText(playerName);
 				nametagPanel.SetTextColor(Color.white);
 				nametagPanel.SetPanelColor(nametagColor);
-			}
-		}
-	}
-
-	private void OnDestroy()
-	{
-		if (UIManager.Instance != null)
-		{
-			if (nametagPanel != null)
-				UIManager.Instance.RemoveWorldPositionedPanel(transform);
-			if (sprintBarPanel != null)
-				UIManager.Instance.RemoveWorldPositionedPanel(transform);
-		}
-	}
-
-
-	// Getter/setter for player name that updates the UI
-	public string PlayerName
-	{
-		get => playerName;
-		set
-		{
-			playerName = value;
-			if (nametagPanel != null)
-			{
-				nametagPanel.SetText(value);
 			}
 		}
 	}
@@ -262,6 +179,44 @@ public class Player : MonoBehaviour
 		HandleSprintResource();
 	}
 
+	private void HandleSprintResource()
+	{
+		if (isSprinting && canSprint)
+		{
+			currentSprintResource = Mathf.Max(0f, currentSprintResource - (sprintDrainRate * Time.deltaTime));
+			sprintRecoveryTimer = 0f;
+
+			if (!canSprint)
+			{
+				StopSprinting();
+			}
+		}
+		else
+		{
+			if (sprintRecoveryTimer < sprintRecoveryDelay)
+			{
+				sprintRecoveryTimer += Time.deltaTime;
+			}
+			else if (currentSprintResource < maxSprintResource)
+			{
+				currentSprintResource = Mathf.Min(maxSprintResource,
+					currentSprintResource + (sprintRecoveryRate * Time.deltaTime));
+			}
+		}
+
+		UpdateSprintBarUI();
+	}
+
+	private void UpdateSprintBarUI()
+	{
+		if (sprintBar != null)
+		{
+			float sprintPercentage = currentSprintResource / maxSprintResource;
+			bool isRecovering = !isSprinting && sprintPercentage < 1f;
+			sprintBar.UpdateSprintBar(sprintPercentage, isSprinting, isRecovering);
+		}
+	}
+
 	private void HandleMovement()
 	{
 		Vector2 inputMove = InputManager.Instance.GetMovementInputVector();
@@ -274,7 +229,6 @@ public class Player : MonoBehaviour
 		{
 			movementDirection = movementDirection.relativeTo(_character.cameraTransform, _character.GetUpVector());
 
-			// Apply movement modifiers
 			if (isChargingThrow)
 			{
 				movementDirection *= moveSpeedMultiplierWhileThrowing;
@@ -291,9 +245,7 @@ public class Player : MonoBehaviour
 	private void UpdateRotationTowardsMouse()
 	{
 		Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-		RaycastHit hit;
-
-		if (Physics.Raycast(ray, out hit, 100f, groundLayer))
+		if (Physics.Raycast(ray, out RaycastHit hit, 100f, groundLayer))
 		{
 			Vector3 targetDirection = hit.point - transform.position;
 			targetDirection.y = 0;
@@ -334,12 +286,6 @@ public class Player : MonoBehaviour
 		isChargingThrow = true;
 		throwChargeStartTime = Time.time;
 
-		if (throwPowerUIPanel != null)
-		{
-			throwPowerUIPanel.SetActive(true);
-			throwPowerFillBar.fillAmount = 0f;
-		}
-
 		if (chargingParticleSystem != null)
 		{
 			chargingParticleSystem.transform.position = pickedupObject.transform.position;
@@ -352,10 +298,9 @@ public class Player : MonoBehaviour
 		float chargeTime = Mathf.Min(Time.time - throwChargeStartTime, maxChargeTime);
 		float chargePercent = chargeTime / maxChargeTime;
 
-		if (throwPowerFillBar != null)
+		if (throwPowerBar != null)
 		{
-			throwPowerFillBar.fillAmount = chargePercent;
-			throwPowerFillBar.color = Color.Lerp(minChargeColor, maxChargeColor, chargePercent);
+			throwPowerBar.UpdatePowerBar(chargePercent, isChargingThrow);
 		}
 
 		if (chargingParticleSystem != null)
@@ -381,47 +326,14 @@ public class Player : MonoBehaviour
 		pickedupObject = null;
 
 		isChargingThrow = false;
-		if (throwPowerUIPanel != null)
+		if (throwPowerBar != null)
 		{
-			throwPowerUIPanel.SetActive(false);
+			throwPowerBar.UpdatePowerBar(0f, false);
 		}
+
 		if (chargingParticleSystem != null)
 		{
 			chargingParticleSystem.Stop();
-		}
-	}
-
-	private void HandlePickupInput()
-	{
-		if (InputManager.Instance.GetPickupInput())
-		{
-			if (!pickupInputActive)
-			{
-				pickupInputActive = true;
-				pickupInputStartTime = Time.time;
-
-				if (isHoldingObject)
-				{
-					// Drop currently held object
-					isHoldingObject = false;
-					pickedupObject.Drop(this);
-					pickedupObject = null;
-				}
-				else if (hoveringObject != null)
-				{
-					// Pick up new object
-					isHoldingObject = true;
-					hoveringObject.GetComponent<Rigidbody>().isKinematic = true;
-					hoveringObject.Pickup(this);
-					pickedupObject = hoveringObject;
-					justPickedUp = true;
-				}
-			}
-		}
-		else if (pickupInputActive)
-		{
-			pickupInputActive = false;
-			justPickedUp = false;
 		}
 	}
 
@@ -449,6 +361,38 @@ public class Player : MonoBehaviour
 		hoveringObject = null;
 	}
 
+	private void HandlePickupInput()
+	{
+		if (InputManager.Instance.GetPickupInput())
+		{
+			if (!pickupInputActive)
+			{
+				pickupInputActive = true;
+				pickupInputStartTime = Time.time;
+
+				if (isHoldingObject)
+				{
+					isHoldingObject = false;
+					pickedupObject.Drop(this);
+					pickedupObject = null;
+				}
+				else if (hoveringObject != null)
+				{
+					isHoldingObject = true;
+					hoveringObject.GetComponent<Rigidbody>().isKinematic = true;
+					hoveringObject.Pickup(this);
+					pickedupObject = hoveringObject;
+					justPickedUp = true;
+				}
+			}
+		}
+		else if (pickupInputActive)
+		{
+			pickupInputActive = false;
+			justPickedUp = false;
+		}
+	}
+
 	private void HandleInteractInput()
 	{
 		if (InputManager.Instance.GetInteractPressed())
@@ -461,9 +405,27 @@ public class Player : MonoBehaviour
 		}
 	}
 
-	public Transform GetHoldingObjectSpotTransform()
+	private void OnSprintPressed(InputAction.CallbackContext context)
 	{
-		return holdingObjectTransform;
+		if (_character.IsWalking() && !_character.IsCrouched() && canSprint)
+		{
+			isSprinting = true;
+			_character.maxWalkSpeed = defaultWalkSpeed * sprintSpeedMultiplier;
+		}
+	}
+
+	private void OnSprintReleased(InputAction.CallbackContext context)
+	{
+		StopSprinting();
+	}
+
+	private void StopSprinting()
+	{
+		if (isSprinting)
+		{
+			isSprinting = false;
+			_character.maxWalkSpeed = defaultWalkSpeed;
+		}
 	}
 
 	private void OnCrouchPressed(InputAction.CallbackContext context)
@@ -484,5 +446,36 @@ public class Player : MonoBehaviour
 	private void OnJumpReleased(InputAction.CallbackContext context)
 	{
 		_character.StopJumping();
+	}
+
+	public string PlayerName
+	{
+		get => playerName;
+		set
+		{
+			playerName = value;
+			if (nametagPanel != null)
+			{
+				nametagPanel.SetText(value);
+			}
+		}
+	}
+
+	public Transform GetHoldingObjectSpotTransform()
+	{
+		return holdingObjectTransform;
+	}
+
+	private void OnDestroy()
+	{
+		if (UIManager.Instance != null)
+		{
+			if (nametagPanel != null)
+				UIManager.Instance.RemoveWorldPositionedPanel(transform);
+			if (sprintBarPanel != null)
+				UIManager.Instance.RemoveWorldPositionedPanel(transform);
+			if (throwPowerBarPanel != null)
+				UIManager.Instance.RemoveWorldPositionedPanel(transform);
+		}
 	}
 }

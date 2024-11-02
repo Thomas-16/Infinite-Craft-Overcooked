@@ -5,11 +5,8 @@ using TMPro;
 public class SprintBar : MonoBehaviour
 {
 	[SerializeField] private Image fillBar;
-	[SerializeField] private Image backgroundBar;  // Reference to background image if you have one
 	[SerializeField] private Color fullColor = Color.green;
 	[SerializeField] private Color emptyColor = Color.red;
-	[SerializeField] private float barWidth = 100f;
-	[SerializeField] private float barHeight = 10f;
 	[SerializeField] private float fadeSpeed = 3f;
 
 	private float targetAlpha = 0f;
@@ -50,13 +47,6 @@ public class SprintBar : MonoBehaviour
 			Color fillColor = fillBar.color;
 			fillColor.a = alpha;
 			fillBar.color = fillColor;
-		}
-
-		if (backgroundBar != null)
-		{
-			Color bgColor = backgroundBar.color;
-			bgColor.a = alpha;
-			backgroundBar.color = bgColor;
 		}
 	}
 

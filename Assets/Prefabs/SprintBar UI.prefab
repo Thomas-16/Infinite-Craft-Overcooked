@@ -112,8 +112,7 @@ MonoBehaviour:
   fillBar: {fileID: 168820771151083887}
   fullColor: {r: 0, g: 1, b: 0, a: 1}
   emptyColor: {r: 1, g: 0, b: 0, a: 1}
-  barWidth: 100
-  barHeight: 5
+  fadeSpeed: 3
 --- !u!1 &4591203635795276660
 GameObject:
   m_ObjectHideFlags: 0

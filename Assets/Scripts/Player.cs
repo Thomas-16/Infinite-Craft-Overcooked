@@ -185,7 +185,8 @@ public class Player : MonoBehaviour
         HandleMovement();
         HandleHoverObjects();
         HandlePickupInput();
-        
+		HandleSprintResource();
+
         if (isChargingThrow)
         {
             UpdateThrowCharge();
@@ -287,7 +288,7 @@ public class Player : MonoBehaviour
         if (isHoldingObject)
         {
             // Start charging if holding F long enough after pickup
-            bool shouldStartCharge = pickupInputActive && Time.time - pickupInputStartTime > 0.2f && !isChargingThrow;
+            bool shouldStartCharge = pickupInputActive && Time.time - pickupInputStartTime > 0.1f && !isChargingThrow;
             
             // If we were charging and released F
             bool shouldThrow = !pickupInputActive && isChargingThrow;

@@ -148,52 +148,72 @@ public class LLement : PickupableObject
 	}
 
 	public async void SetElementName(string elementName)
-	{
-		Debug.Log($"[LLement] Setting element name to: {elementName}");
-		ElementName = elementName;
+    {
+        Debug.Log($"[LLement] Setting element name to: {elementName}");
+        ElementName = elementName;
+        
+        if (namePanel != null)
+        {
+            // If Spanish is enabled, translate the element name
+            if (LanguageSettings.IsSpanish)
+            {
+                string prompt = $"Translate this word to Spanish. Reply with ONLY the Spanish word in lowercase, no articles, no explanation: {elementName}";
+                try
+                {
+                    string translation = await ChatGPTClient.Instance.SendChatRequest(prompt);
+                    translation = translation.Trim().ToLower();
+                    Debug.Log($"[LLement] Translated {elementName} to {translation}");
+                    namePanel.SetText(translation);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError($"[LLement] Translation failed: {e.Message}");
+                    namePanel.SetText(elementName); // Fallback to English
+                }
+            }
+            else
+            {
+                namePanel.SetText(elementName);
+            }
+        }
 
-		if (namePanel != null)
-		{
-			namePanel.SetText(elementName);
-		}
+        try
+        {
+            metadata = await ObjectMetadataAPI.Instance.GetObjectMetadata(elementName);
 
-		try
-		{
-			metadata = await ObjectMetadataAPI.Instance.GetObjectMetadata(elementName);
+            if (metadata != null)
+            {
+                if (!string.IsNullOrEmpty(metadata.emoji))
+                {
+                    Sprite emojiSprite = await EmojiConverter.GetEmojiSprite(metadata.emoji);
+                    if (emojiSprite != null)
+                    {
+                        if (emojiRenderer != null)
+                        {
+                            emojiRenderer.gameObject.SetActive(true);
+                            emojiRenderer.sprite = emojiSprite;
+                            Debug.Log($"[LLement] Set sprite for {elementName}, Renderer active: {emojiRenderer.gameObject.activeInHierarchy}");
+                        }
+                        else
+                        {
+                            Debug.LogError($"[LLement] Emoji renderer is null when trying to set sprite for {elementName}");
+                        }
+                    }
+                }
 
-			if (metadata != null)
-			{
-				if (!string.IsNullOrEmpty(metadata.emoji))
-				{
-					Sprite emojiSprite = await EmojiConverter.GetEmojiSprite(metadata.emoji);
-					if (emojiSprite != null)
-					{
-						if (emojiRenderer != null)
-						{
-							emojiRenderer.gameObject.SetActive(true);
-							emojiRenderer.sprite = emojiSprite;
-							Debug.Log($"[LLement] Set sprite for {elementName}, Renderer active: {emojiRenderer.gameObject.activeInHierarchy}");
-						}
-						else
-						{
-							Debug.LogError($"[LLement] Emoji renderer is null when trying to set sprite for {elementName}");
-						}
-					}
-				}
-
-				ApplyMetadataScale();
-				AdjustSpriteToCollider();
-			}
-			else
-			{
-				Debug.LogError($"[LLement] Failed to get metadata for {elementName}");
-			}
-		}
-		catch (Exception e)
-		{
-			Debug.LogError($"[LLement] Error setting element name {elementName}: {e.Message}");
-		}
-	}
+                ApplyMetadataScale();
+                AdjustSpriteToCollider();
+            }
+            else
+            {
+                Debug.LogError($"[LLement] Failed to get metadata for {elementName}");
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[LLement] Error setting element name {elementName}: {e.Message}");
+        }
+    }
 
 	private void ApplyMetadataScale()
 	{

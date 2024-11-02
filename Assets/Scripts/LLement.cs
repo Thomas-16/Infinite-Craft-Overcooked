@@ -1,7 +1,5 @@
 using UnityEngine;
 using System.Collections;
-using UnityEngine.UI;
-using TMPro;
 using System;
 
 public class LLement : PickupableObject
@@ -18,10 +16,8 @@ public class LLement : PickupableObject
 	[SerializeField] private float spriteSizeMultiplier = 0.3f;
 
 	[Header("UI Settings")]
-	[SerializeField] private Canvas worldSpaceCanvas;
-	[SerializeField] private TextMeshProUGUI nameLabel;
-	[SerializeField] private float labelVerticalOffset = 1f;
-	[SerializeField] private Color labelColor = Color.white;
+	[SerializeField] private float nameTagOffset = 1.5f;
+	[SerializeField] private Color textColor = Color.white;
 	[SerializeField] private Color panelColor = new Color(0f, 0f, 0f, 0.5f);
 
 	[Header("UI Fade Settings")]
@@ -41,8 +37,12 @@ public class LLement : PickupableObject
 	private float currentAlpha = 0f;
 	private float targetAlpha = 0f;
 	private Vector3 originalScale;
+	private UIPanel namePanel;
 
 	public GameObject visuals;
+
+	[SerializeField]
+	private UIPanel namePanelPrefab;
 
 	private void Awake()
 	{
@@ -52,7 +52,6 @@ public class LLement : PickupableObject
 		{
 			SetElementName(ElementName);
 		}
-		UpdateUIAlpha(0f);
 	}
 
 	private void SetupComponents()
@@ -70,38 +69,6 @@ public class LLement : PickupableObject
 		SetupUI();
 	}
 
-	protected override void Update()
-	{
-		base.Update();
-
-		bool shouldBeVisible = HoveringPlayer != null || IsPickedUp || isMouseOver;
-		targetAlpha = shouldBeVisible ? fadeInAlpha : fadeOutAlpha;
-
-		if (currentAlpha != targetAlpha)
-		{
-			currentAlpha = Mathf.MoveTowards(currentAlpha, targetAlpha, fadeSpeed * Time.deltaTime);
-			UpdateUIAlpha(currentAlpha);
-		}
-	}
-
-	private void UpdateUIAlpha(float alpha)
-	{
-		if (nameLabel != null)
-		{
-			Color textColor = nameLabel.color;
-			textColor.a = alpha;
-			nameLabel.color = textColor;
-
-			Image panelImage = nameLabel.transform.parent.GetComponent<Image>();
-			if (panelImage != null)
-			{
-				Color bgColor = panelImage.color;
-				bgColor.a = alpha * 0.85f;
-				panelImage.color = bgColor;
-			}
-		}
-	}
-
 	private void SetupVisuals()
 	{
 		if (visuals != null) return;
@@ -110,10 +77,10 @@ public class LLement : PickupableObject
 		if (existingVisuals != null)
 		{
 			visuals = existingVisuals.gameObject;
-			emojiRenderer = visuals.GetComponentInChildren<SpriteRenderer>(true); // Include inactive objects in search
+			emojiRenderer = visuals.GetComponentInChildren<SpriteRenderer>(true);
 			if (emojiRenderer != null)
 			{
-				emojiRenderer.gameObject.SetActive(true); // Ensure it's active
+				emojiRenderer.gameObject.SetActive(true);
 				Debug.Log($"[LLement] Found existing emoji renderer: {emojiRenderer.gameObject.name}, Active: {emojiRenderer.gameObject.activeInHierarchy}");
 			}
 			return;
@@ -138,54 +105,45 @@ public class LLement : PickupableObject
 
 	private void SetupUI()
 	{
-		if (worldSpaceCanvas == null)
+		namePanel = UIManager.Instance.CreateWorldPositionedPanel(
+			transform,
+			namePanelPrefab,
+			new Vector3(0, nameTagOffset, 0)
+		);
+
+		if (namePanel != null)
 		{
-			GameObject canvasObj = new GameObject("NameCanvas");
-			canvasObj.transform.SetParent(visuals.transform);
-			canvasObj.transform.localPosition = Vector3.up * labelVerticalOffset;
-			canvasObj.transform.localRotation = Quaternion.identity;
-
-			Canvas canvas = canvasObj.AddComponent<Canvas>();
-			canvas.renderMode = RenderMode.WorldSpace;
-			canvas.worldCamera = Camera.main;
-
-			canvasObj.AddComponent<ConstantScale>();
-
-			GameObject panelObj = new GameObject("BackgroundPanel");
-			panelObj.transform.SetParent(canvasObj.transform);
-
-			RectTransform panelRect = panelObj.AddComponent<RectTransform>();
-			panelRect.anchoredPosition = Vector2.zero;
-
-			ContentSizeFitter panelFitter = panelObj.AddComponent<ContentSizeFitter>();
-			panelFitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
-			panelFitter.verticalFit = ContentSizeFitter.FitMode.MinSize;
-
-			HorizontalLayoutGroup layoutGroup = panelObj.AddComponent<HorizontalLayoutGroup>();
-			layoutGroup.padding = new RectOffset(10, 10, 5, 5);
-			layoutGroup.childAlignment = TextAnchor.MiddleCenter;
-
-			Image panelImage = panelObj.AddComponent<Image>();
-			panelImage.color = panelColor;
-
-			GameObject labelObj = new GameObject("NameLabel");
-			labelObj.transform.SetParent(panelObj.transform);
-
-			RectTransform labelRect = labelObj.AddComponent<RectTransform>();
-			labelRect.anchoredPosition = Vector2.zero;
-
-			TextMeshProUGUI tmpText = labelObj.AddComponent<TextMeshProUGUI>();
-			tmpText.alignment = TextAlignmentOptions.Center;
-			tmpText.fontSize = 20;
-			tmpText.color = labelColor;
-
-			worldSpaceCanvas = canvas;
-			nameLabel = tmpText;
-
-			LayoutRebuilder.ForceRebuildLayoutImmediate(panelRect);
-			panelRect.sizeDelta = new Vector2(0, 30);
-
+			namePanel.SetPanelColor(panelColor);
+			namePanel.SetTextColor(textColor);
 			UpdateUIAlpha(fadeOutAlpha);
+		}
+	}
+
+	protected override void Update()
+	{
+		base.Update();
+
+		bool shouldBeVisible = HoveringPlayer != null || IsPickedUp || isMouseOver;
+		targetAlpha = shouldBeVisible ? fadeInAlpha : fadeOutAlpha;
+
+		if (currentAlpha != targetAlpha)
+		{
+			currentAlpha = Mathf.MoveTowards(currentAlpha, targetAlpha, fadeSpeed * Time.deltaTime);
+			UpdateUIAlpha(currentAlpha);
+		}
+	}
+
+	private void UpdateUIAlpha(float alpha)
+	{
+		if (namePanel != null)
+		{
+			Color panelColorWithAlpha = panelColor;
+			panelColorWithAlpha.a = alpha * 0.85f;
+			namePanel.SetPanelColor(panelColorWithAlpha);
+
+			Color textColorWithAlpha = textColor;
+			textColorWithAlpha.a = alpha;
+			namePanel.SetTextColor(textColorWithAlpha);
 		}
 	}
 
@@ -194,9 +152,9 @@ public class LLement : PickupableObject
 		Debug.Log($"[LLement] Setting element name to: {elementName}");
 		ElementName = elementName;
 
-		if (nameLabel != null)
+		if (namePanel != null)
 		{
-			nameLabel.text = elementName;
+			namePanel.SetText(elementName);
 		}
 
 		try
@@ -212,7 +170,7 @@ public class LLement : PickupableObject
 					{
 						if (emojiRenderer != null)
 						{
-							emojiRenderer.gameObject.SetActive(true); // Ensure it's active before setting sprite
+							emojiRenderer.gameObject.SetActive(true);
 							emojiRenderer.sprite = emojiSprite;
 							Debug.Log($"[LLement] Set sprite for {elementName}, Renderer active: {emojiRenderer.gameObject.activeInHierarchy}");
 						}
@@ -241,11 +199,7 @@ public class LLement : PickupableObject
 	{
 		if (metadata == null) return;
 
-		//float newSize = baseSize * metadata.scale;
-
 		boxCollider.size = Vector3.one;
-		//boxCollider.center = Vector3.zero;
-
 		transform.localScale = Vector3.one * GameManager.Instance.SizeConverter(metadata.scale);
 	}
 
@@ -257,7 +211,6 @@ public class LLement : PickupableObject
 			return;
 		}
 
-		// Ensure the renderer's GameObject is active
 		if (!emojiRenderer.gameObject.activeInHierarchy)
 		{
 			emojiRenderer.gameObject.SetActive(true);
@@ -336,10 +289,9 @@ public class LLement : PickupableObject
 			}
 		}
 
-		// Check for inactive emoji renderer
 		if (emojiRenderer == null)
 		{
-			emojiRenderer = GetComponentInChildren<SpriteRenderer>(true); // Include inactive objects
+			emojiRenderer = GetComponentInChildren<SpriteRenderer>(true);
 			if (emojiRenderer != null)
 			{
 				emojiRenderer.gameObject.SetActive(true);
@@ -361,9 +313,9 @@ public class LLement : PickupableObject
 
 	private void OnDestroy()
 	{
-		if (worldSpaceCanvas != null)
+		if (namePanel != null && UIManager.Instance != null)
 		{
-			Destroy(worldSpaceCanvas.gameObject);
+			UIManager.Instance.RemoveWorldPositionedPanel(transform);
 		}
 	}
 }

@@ -154,8 +154,7 @@ public class LLement : PickupableObject
         
         if (namePanel != null)
         {
-            // If Spanish is enabled, translate the element name
-            if (LanguageSettings.IsSpanish)
+            if (LanguageManager.Instance.IsSpanish)
             {
                 string prompt = $"Translate this word to Spanish. Reply with ONLY the Spanish word in lowercase, no articles, no explanation: {elementName}";
                 try
@@ -168,7 +167,7 @@ public class LLement : PickupableObject
                 catch (Exception e)
                 {
                     Debug.LogError($"[LLement] Translation failed: {e.Message}");
-                    namePanel.SetText(elementName); // Fallback to English
+                    namePanel.SetText(elementName);
                 }
             }
             else

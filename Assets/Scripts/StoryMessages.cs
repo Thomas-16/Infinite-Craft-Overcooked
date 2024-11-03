@@ -87,16 +87,12 @@ public class StoryMessages : MonoBehaviour
 
     private IEnumerator WaitForWordsAndInitialize()
     {
-        // Wait until GameManager has words available
         while (GameManager.Instance == null || GameManager.Instance.GetActiveWords().Count == 0)
         {
             yield return new WaitForSeconds(0.5f);
         }
 
-        // Now we can initialize our story
-        yield return new WaitForSeconds(1f); // Give a slight delay after words are loaded
-        
-        // Start async initialization
+        yield return new WaitForSeconds(1f);
         InitializeStoryAsync();
     }
 
@@ -104,6 +100,92 @@ public class StoryMessages : MonoBehaviour
     {
         await InitializeStory();
         isInitialized = true;
+    }
+
+    private async Task InitializeStory()
+    {
+        List<string> availableWords = GameManager.Instance.GetActiveWords();
+        Dictionary<string, List<string>> categorizedWords = await CategorizeWords(availableWords);
+
+        var viableCategories = categorizedWords
+            .Where(kvp => kvp.Value.Count >= 1)
+            .Select(kvp => kvp.Key)
+            .ToList();
+
+        if (viableCategories.Count < 2)
+        {
+            Debug.LogError("Not enough variety in available words to create a story!");
+            return;
+        }
+
+        string wordTypesDesc = string.Join(", ", viableCategories.Select(cat => $"'{cat}'"));
+        string prompt = LanguageManager.Instance.IsSpanish ?
+            $@"Create a story template in Spanish with 2-3 segments.
+Available word types are: {wordTypesDesc}
+Requirements:
+1. Write in natural Spanish
+2. Use 'el/la/los/las/un/una' appropriately
+3. Ensure logical relationships
+4. Use proper Spanish grammar
+5. Make the story engaging and natural
+
+Format each segment as type:text where [type] will be replaced.
+Example formats:
+food:El chef encuentra un [food] en la cocina
+place:y corre hacia el [place] para cocinarlo
+object:El mago usa el [object] para lanzar un hechizo
+
+Reply ONLY with formatted segments separated by commas. No other text."
+            :
+            $@"Create a story template with 2-3 segments that makes logical sense. 
+Available word types are: {wordTypesDesc}
+Requirements:
+1. Each segment must be grammatically complete
+2. Use 'the' or 'a' before word placeholders
+3. Ensure logical relationships between segments
+4. Each action must make sense for the type of object
+5. Create a natural, flowing narrative
+
+Format each segment as type:text where [type] will be replaced with a word.
+Example good formats:
+food:The hungry chef discovers a [food] in the kitchen
+place:and quickly runs to the [place] to prepare it
+object:The wizard carefully uses the [object] to cast a spell
+
+Reply ONLY with properly formatted segments separated by commas. No other text.";
+
+        try
+        {
+            string response = await ChatGPTClient.Instance.SendChatRequest(prompt);
+            string[] segments = response.Split(',');
+            
+            currentStory = new StoryProgress();
+
+            foreach (string segment in segments)
+            {
+                string[] parts = segment.Split(':');
+                if (parts.Length != 2) continue;
+
+                string wordType = parts[0].Trim().ToLower();
+                string text = parts[1].Trim();
+
+                if (categorizedWords.ContainsKey(wordType) && categorizedWords[wordType].Any())
+                {
+                    currentStory.segments.Add(new StorySegment
+                    {
+                        text = text,
+                        requiredWordType = wordType,
+                        acceptableWords = categorizedWords[wordType]
+                    });
+                }
+            }
+
+            DisplayCurrentPrompt();
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Failed to initialize story: {e.Message}");
+        }
     }
 
     private async Task<Dictionary<string, List<string>>> CategorizeWords(List<string> words)
@@ -154,14 +236,14 @@ Words: " + string.Join(", ", words);
     {
         if (currentStory == null || currentStory.currentSegmentIndex >= currentStory.segments.Count)
         {
-            QueueMessage("Story complete! Well done!", defaultTextColor, storyBackgroundColor);
+            string completeMessage = LanguageManager.Instance.GetTranslation("UI", "story_complete");
+            QueueMessage(completeMessage, defaultTextColor, storyBackgroundColor);
             return;
         }
 
         StorySegment segment = currentStory.segments[currentStory.currentSegmentIndex];
-        string promptText = $"{segment.text}";
+        string promptText = segment.text;
         
-        // Update prompt panel
         if (promptPanel != null) Destroy(promptPanel.gameObject);
         
         promptPanel = Instantiate(currentPromptPrefab, promptContainer);
@@ -175,119 +257,10 @@ Words: " + string.Join(", ", words);
         promptPanel.SetTextColor(defaultTextColor);
         promptPanel.SetPanelColor(storyBackgroundColor);
 
-        // Fade in effect
         CanvasGroup canvasGroup = promptPanel.gameObject.AddComponent<CanvasGroup>();
         canvasGroup.alpha = 0f;
         DOTween.To(() => canvasGroup.alpha, x => canvasGroup.alpha = x, 1f, fadeInDuration)
             .SetEase(Ease.OutQuad);
-    }
-
-private void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.P))
-        {
-            LanguageSettings.ToggleSpanish();
-            RestartStory();
-        }
-    }
-
-    private async void RestartStory()
-    {
-        if (currentStory != null)
-        {
-            currentStory = null;
-            if (promptPanel != null)
-            {
-                Destroy(promptPanel.gameObject);
-            }
-            await InitializeStory();
-        }
-    }
-
-    private async Task InitializeStory()
-    {
-        List<string> availableWords = GameManager.Instance.GetActiveWords();
-        Dictionary<string, List<string>> categorizedWords = await CategorizeWords(availableWords);
-
-        var viableCategories = categorizedWords
-            .Where(kvp => kvp.Value.Count >= 1)
-            .Select(kvp => kvp.Key)
-            .ToList();
-
-        if (viableCategories.Count < 2)
-        {
-            Debug.LogError("Not enough variety in available words to create a story!");
-            return;
-        }
-
-        string wordTypesDesc = string.Join(", ", viableCategories.Select(cat => $"'{cat}'"));
-        string prompt = LanguageSettings.IsSpanish ?
-            $@"Create a story template in Spanish with 2-3 segments.
-Available word types are: {wordTypesDesc}
-Requirements:
-1. Write in natural Spanish
-2. Use 'el/la/los/las/un/una' appropriately
-3. Ensure logical relationships
-4. Use proper Spanish grammar
-5. Make the story engaging
-
-Format each segment as type:text where [type] will be replaced.
-Example formats:
-food:El chef encuentra un [food] en
-place:y corre hacia el [place] para cocinarlo
-object:El mago usa el [object] para lanzar un hechizo
-
-Reply ONLY with formatted segments separated by commas. No other text."
-            :
-            $@"Create a very short story template with 2-3 segments that makes logical sense. 
-Available word types are: {wordTypesDesc}
-Requirements:
-1. Each segment must be grammatically complete
-2. Use 'the' or 'a' before word placeholders
-3. Ensure logical relationships between segments
-4. Each action must make sense for the type of object
-5. Include proper prepositions and articles
-
-Format each segment as type:text where [type] will be replaced with a word.
-Example good formats:
-food:The hungry chef discovers a [food] in
-place:and rushes to the [place] to cook it
-object:The wizard uses the [object] to cast a spell
-
-Reply ONLY with properly formatted segments separated by commas. No other text.";
-
-        try
-        {
-            string response = await ChatGPTClient.Instance.SendChatRequest(prompt);
-            string[] segments = response.Split(',');
-            
-            currentStory = new StoryProgress();
-
-            foreach (string segment in segments)
-            {
-                string[] parts = segment.Split(':');
-                if (parts.Length != 2) continue;
-
-                string wordType = parts[0].Trim().ToLower();
-                string text = parts[1].Trim();
-
-                if (categorizedWords.ContainsKey(wordType) && categorizedWords[wordType].Any())
-                {
-                    currentStory.segments.Add(new StorySegment
-                    {
-                        text = text,
-                        requiredWordType = wordType,
-                        acceptableWords = categorizedWords[wordType]
-                    });
-                }
-            }
-
-            DisplayCurrentPrompt();
-        }
-        catch (Exception e)
-        {
-            Debug.LogError($"Failed to initialize story: {e.Message}");
-        }
     }
 
     public async Task<bool> EvaluateWord(string word)
@@ -297,25 +270,7 @@ Reply ONLY with properly formatted segments separated by commas. No other text."
             return false;
 
         StorySegment currentSegment = currentStory.segments[currentStory.currentSegmentIndex];
-        
-        // If in Spanish mode, translate the submitted word for comparison
-        string wordToCheck = word.ToLower();
-        if (LanguageSettings.IsSpanish)
-        {
-            try
-            {
-                string prompt = $"Translate '{word}' to English. Reply with ONLY the English word, no other text.";
-                wordToCheck = await ChatGPTClient.Instance.SendChatRequest(prompt);
-                wordToCheck = wordToCheck.Trim().ToLower();
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"Translation failed: {e.Message}");
-                return false;
-            }
-        }
-
-        bool isCorrect = currentSegment.acceptableWords.Contains(wordToCheck);
+        bool isCorrect = currentSegment.acceptableWords.Contains(word.ToLower());
 
         string response;
         Color backgroundColor;
@@ -329,9 +284,7 @@ Reply ONLY with properly formatted segments separated by commas. No other text."
             
             if (currentStory.currentSegmentIndex >= currentStory.segments.Count)
             {
-                string completeMessage = LanguageSettings.IsSpanish ? 
-                    "¡Historia completa! Aquí viene otra..." : 
-                    "Story complete! Here comes another...";
+                string completeMessage = LanguageManager.Instance.GetTranslation("UI", "story_complete");
                 QueueMessage(completeMessage, defaultTextColor, storyBackgroundColor);
                 await Task.Delay(2000);
                 await InitializeStory();
@@ -343,9 +296,7 @@ Reply ONLY with properly formatted segments separated by commas. No other text."
         }
         else
         {
-            string tryAgainMessage = LanguageSettings.IsSpanish ?
-                $"¡Intenta con otro tipo de {currentSegment.requiredWordType}!" :
-                $"Try using a different {currentSegment.requiredWordType}!";
+            string tryAgainMessage = $"{LanguageManager.Instance.GetTranslation("UI", "try_different")} {currentSegment.requiredWordType}!";
             response = tryAgainMessage;
             backgroundColor = incorrectAnswerColor;
         }
@@ -353,6 +304,7 @@ Reply ONLY with properly formatted segments separated by commas. No other text."
         QueueMessage(response, defaultTextColor, backgroundColor);
         return isCorrect;
     }
+
 
     public StorySegment GetCurrentSegment()
     {

@@ -2381,6 +2381,7 @@ GameObject:
   - component: {fileID: 134032427}
   - component: {fileID: 134032426}
   - component: {fileID: 134032425}
+  - component: {fileID: 134032428}
   m_Layer: 0
   m_Name: Story Panel
   m_TagString: Untagged
@@ -2475,6 +2476,19 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 134032423}
   m_CullTransparentMesh: 1
+--- !u!114 &134032428
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 134032423}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 16cf829f7650b49cda0b5e0b212fe536, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  gameLanguage: 1
 --- !u!1 &141330912
 GameObject:
   m_ObjectHideFlags: 0

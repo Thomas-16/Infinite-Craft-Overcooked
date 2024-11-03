@@ -90,7 +90,7 @@ public class GameManager : MonoBehaviour
             }
 
             // If we somehow got duplicates or not enough words, fill with fallback words
-            while (newWords.Count < 30)
+            /*while (newWords.Count < 30)
             {
                 string fallbackWord = GetFallbackWord();
                 if (!allUsedWords.Contains(fallbackWord))
@@ -98,7 +98,7 @@ public class GameManager : MonoBehaviour
                     newWords.Add(fallbackWord);
                     allUsedWords.Add(fallbackWord);
                 }
-            }
+            }*/
 
             activeWords = newWords;
             Debug.Log($"Generated {activeWords.Count} unique words");

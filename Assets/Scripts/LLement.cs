@@ -154,26 +154,7 @@ public class LLement : PickupableObject
         
         if (namePanel != null)
         {
-            if (LanguageManager.Instance.IsSpanish)
-            {
-                string prompt = $"Translate this word to Spanish. Reply with ONLY the Spanish word in lowercase, no articles, no explanation: {elementName}";
-                try
-                {
-                    string translation = await ChatGPTClient.Instance.SendChatRequest(prompt);
-                    translation = translation.Trim().ToLower();
-                    Debug.Log($"[LLement] Translated {elementName} to {translation}");
-                    namePanel.SetText(translation);
-                }
-                catch (Exception e)
-                {
-                    Debug.LogError($"[LLement] Translation failed: {e.Message}");
-                    namePanel.SetText(elementName);
-                }
-            }
-            else
-            {
-                namePanel.SetText(elementName);
-            }
+            namePanel.SetText(elementName);
         }
 
         try

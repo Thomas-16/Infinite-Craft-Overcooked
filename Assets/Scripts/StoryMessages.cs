@@ -82,7 +82,7 @@ public class StoryMessages : MonoBehaviour
 
     private void Start()
     {
-        StartCoroutine(WaitForWordsAndInitialize());
+        //StartCoroutine(WaitForWordsAndInitialize());
     }
 
     private IEnumerator WaitForWordsAndInitialize()
@@ -119,24 +119,7 @@ public class StoryMessages : MonoBehaviour
         }
 
         string wordTypesDesc = string.Join(", ", viableCategories.Select(cat => $"'{cat}'"));
-        string prompt = LanguageManager.Instance.IsSpanish ?
-            $@"Create a story template in Spanish with 2-3 segments.
-Available word types are: {wordTypesDesc}
-Requirements:
-1. Write in natural Spanish
-2. Use 'el/la/los/las/un/una' appropriately
-3. Ensure logical relationships
-4. Use proper Spanish grammar
-5. Make the story engaging and natural
-
-Format each segment as type:text where [type] will be replaced.
-Example formats:
-food:El chef encuentra un [food] en la cocina
-place:y corre hacia el [place] para cocinarlo
-object:El mago usa el [object] para lanzar un hechizo
-
-Reply ONLY with formatted segments separated by commas. No other text."
-            :
+        string prompt = 
             $@"Create a story template with 2-3 segments that makes logical sense. 
 Available word types are: {wordTypesDesc}
 Requirements:

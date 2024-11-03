@@ -50,7 +50,7 @@ public class LLement : PickupableObject
 		SetupComponents();
 		if (!string.IsNullOrEmpty(ElementName))
 		{
-			SetElementName(ElementName);
+			//SetElementName(ElementName);
 		}
 	}
 
@@ -147,7 +147,7 @@ public class LLement : PickupableObject
 		}
 	}
 
-	public async void SetElementName(string elementName)
+	public async void SetElementName(string elementName, ObjectMetadata metadata)
     {
         Debug.Log($"[LLement] Setting element name to: {elementName}");
         ElementName = elementName;
@@ -157,42 +157,22 @@ public class LLement : PickupableObject
             namePanel.SetText(elementName);
         }
 
-        try
-        {
-            metadata = await ObjectMetadataAPI.Instance.GetObjectMetadata(elementName);
-
-            if (metadata != null)
-            {
-                if (!string.IsNullOrEmpty(metadata.emoji))
-                {
-                    Sprite emojiSprite = await EmojiConverter.GetEmojiSprite(metadata.emoji);
-                    if (emojiSprite != null)
-                    {
-                        if (emojiRenderer != null)
-                        {
-                            emojiRenderer.gameObject.SetActive(true);
-                            emojiRenderer.sprite = emojiSprite;
-                            Debug.Log($"[LLement] Set sprite for {elementName}, Renderer active: {emojiRenderer.gameObject.activeInHierarchy}");
-                        }
-                        else
-                        {
-                            Debug.LogError($"[LLement] Emoji renderer is null when trying to set sprite for {elementName}");
-                        }
-                    }
-                }
-
-                ApplyMetadataScale();
-                AdjustSpriteToCollider();
-            }
-            else
-            {
-                Debug.LogError($"[LLement] Failed to get metadata for {elementName}");
-            }
-        }
-        catch (Exception e)
-        {
-            Debug.LogError($"[LLement] Error setting element name {elementName}: {e.Message}");
-        }
+		Sprite emojiSprite = await EmojiConverter.GetEmojiSprite(metadata.emoji);
+		if (emojiSprite != null)
+		{
+			if (emojiRenderer != null)
+			{
+				emojiRenderer.gameObject.SetActive(true);
+				emojiRenderer.sprite = emojiSprite;
+				Debug.Log($"[LLement] Set sprite for {elementName}, Renderer active: {emojiRenderer.gameObject.activeInHierarchy}");
+			}
+			else
+			{
+				Debug.LogError($"[LLement] Emoji renderer is null when trying to set sprite for {elementName}");
+			}
+		}
+		ApplyMetadataScale();
+		AdjustSpriteToCollider();
     }
 
 	private void ApplyMetadataScale()

@@ -3,357 +3,427 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
 
-[System.Serializable]
-public class SpawnExclusionZone
-{
-    public Vector3 center;
-    public float radius;
-}
-
 public class GameManager : MonoBehaviour
 {
-    public static GameManager Instance { get; private set; }
+	public static GameManager Instance { get; private set; }
 
-    [SerializeField] private GameObject elementPrefab;
+	[SerializeField] private GameObject elementPrefab;
+	[SerializeField] private Transform playerTransform;
 
-    [Header("Spawn Settings")]
-    [SerializeField] private float spawnHeight = 5f;
-    [SerializeField] private float spawnRadius = 10f;
-    [SerializeField] private int totalItemsToSpawn = 30;
-    [SerializeField] private Vector3 spawnCenterOffset = new Vector3(0, 0, 3.5f);
-    [SerializeField] private List<SpawnExclusionZone> exclusionZones = new List<SpawnExclusionZone>();
+	[Header("Spawn Settings")]
+	[SerializeField] private float spawnHeight = 1.5f;
+	[SerializeField] private float spawnRadius = 5f;
 
-    [Header("Merge Effect Settings")]
-    [SerializeField] private ParticleSystem mergeEffectPrefab;
-    [SerializeField] private float mergeEffectDuration = 1f;
-    [SerializeField] private float mergeEffectScale = 1f;
+	[Header("Game Settings")]
+	[SerializeField] private int minimumObjects = 2;
+	[SerializeField] private int maximumObjects = 10;
+	[SerializeField] private float minSpawnDelay = 1f;
+	[SerializeField] private float maxSpawnDelay = 3f;
+	[SerializeField] private float similarityThreshold = 0.3f;
 
-    [Header("Word Generation Settings")]
-    [SerializeField] private int minWordsBeforeReplenish = 10;
-    [SerializeField] private float minReplenishDelay = 3f;
-    [SerializeField] private float maxReplenishDelay = 8f;
+	[Header("UI Settings")]
+	[SerializeField] private TMPro.TextMeshProUGUI scoreText;
 
-    private HashSet<string> allUsedWords = new HashSet<string>();
-    private List<string> activeWords = new List<string>();
-	public List<string> GetActiveWords()
+	[Header("Merge Effect Settings")]
+	[SerializeField] private ParticleSystem mergeEffectPrefab;
+	[SerializeField] private float mergeEffectDuration = 1f;
+	[SerializeField] private float mergeEffectScale = 1f;
+
+	private Dictionary<string, ObjectMetadata> elementDatabase = new Dictionary<string, ObjectMetadata>();
+	private HashSet<string> discoveredWords = new HashSet<string>();
+	private HashSet<string> allUsedWords = new HashSet<string>();
+	private List<string> activeWords = new List<string>();
+	private List<LLement> activeElements = new List<LLement>();
+	private int playerScore = 0;
+	private bool isSpawning = false;
+
+	public List<string> GetActiveWords() => new List<string>(activeWords);
+
+	private void Awake()
 	{
-		return new List<string>(activeWords);
+		Instance = this;
 	}
-    private bool isReplenishing = false;
 
-    private void Awake()
-    {
-        Instance = this;
-    }
+	private void Start()
+	{
+		if (playerTransform == null)
+		{
+			playerTransform = GameObject.FindGameObjectWithTag("Player")?.transform;
+			if (playerTransform == null)
+			{
+				Debug.LogError("Player transform not found! Please assign it in the inspector or tag your player with 'Player'");
+				return;
+			}
+		}
 
-    private void Start()
-    {
-        StartCoroutine(InitializeAndSpawn());
-        StartCoroutine(MonitorWordCount());
-    }
+		StartCoroutine(InitializeAndSpawn());
+		StartCoroutine(MonitorObjectCount());
+	}
 
-    private IEnumerator InitializeAndSpawn()
-    {
-        // Wait for initial words to be generated
-        while (activeWords.Count == 0)
-        {
-            GenerateInitialWords();
-            yield return new WaitForSeconds(0.1f);
-        }
+	private void UpdateScoreDisplay()
+	{
+		if (scoreText != null)
+		{
+			scoreText.text = $"Score: {playerScore}";
+		}
+	}
 
-        // Start spawning once we have words
-        StartCoroutine(SpawnInitialResources());
-    }
+	private IEnumerator InitializeAndSpawn()
+	{
+		var wordGenerationTask = GenerateInitialWords();
 
-    private async void GenerateInitialWords()
-    {
-        string prompt = "Generate a list of exactly 30 random nouns. Include everyday objects, pop culture items, and general concepts. " +
-                       "Each word MUST be unique. Separate words with commas. " +
-                       "Keep words relatively simple and recognizable. " +
-                       "Include some fun items like 'lightsaber' or 'pokeball' but keep most items realistic. " +
-                       "All words must be single words (no spaces). " +
-                       "Reply with ONLY the comma-separated list, no other text.";
+		while (!wordGenerationTask.IsCompleted)
+		{
+			yield return null;
+		}
 
-        try
-        {
-            string response = await ChatGPTClient.Instance.SendChatRequest(prompt);
-            List<string> newWords = new List<string>();
-            
-            foreach (string word in response.Split(','))
-            {
-                string cleanWord = word.Trim().ToLower();
-                if (!string.IsNullOrWhiteSpace(cleanWord) && !allUsedWords.Contains(cleanWord))
-                {
-                    newWords.Add(cleanWord);
-                    allUsedWords.Add(cleanWord);
-                }
-            }
+		yield return null;
+		StartCoroutine(SpawnInitialObjects());
+	}
 
-            // If we somehow got duplicates or not enough words, fill with fallback words
-            /*while (newWords.Count < 30)
-            {
-                string fallbackWord = GetFallbackWord();
-                if (!allUsedWords.Contains(fallbackWord))
-                {
-                    newWords.Add(fallbackWord);
-                    allUsedWords.Add(fallbackWord);
-                }
-            }*/
+	private IEnumerator SpawnInitialObjects()
+	{
+		foreach (string word in activeWords)
+		{
+			if (elementDatabase.TryGetValue(word, out ObjectMetadata metadata))
+			{
+				Vector2 randomCircle = Random.insideUnitCircle * spawnRadius;
+				Vector3 spawnPosition = playerTransform.position + new Vector3(randomCircle.x, spawnHeight, randomCircle.y);
 
-            activeWords = newWords;
-            Debug.Log($"Generated {activeWords.Count} unique words");
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"Failed to get random words: {e.Message}");
-            GenerateFallbackWords();
-        }
-    }
+				LLement newElement = SpawnElement(word, spawnPosition, metadata);
+				activeElements.Add(newElement);
+				yield return new WaitForSeconds(0.2f);
+			}
+			else
+			{
+				Debug.LogError($"No metadata found for initial word: {word}");
+			}
+		}
+	}
 
-    private string GetFallbackWord()
-    {
-        string[] fallbackWords = {
-            "book", "phone", "cup", "bag", "chair", "desk", "lamp", "pen", "clock", "mirror",
-            "lightsaber", "pokeball", "wand", "ring", "shield", "sword", "crown", "gem", "staff", "orb",
-            "camera", "wallet", "key", "brush", "shoes", "hat", "scarf", "glove", "watch", "glasses",
-            "telescope", "compass", "map", "journal", "coin", "pearl", "crystal", "feather", "ribbon", "mask"
-        };
+	private Vector3 FindMidpoint(Vector3 pointA, Vector3 pointB)
+	{
+		return (pointA + pointB) / 2;
+	}
 
-        return fallbackWords[Random.Range(0, fallbackWords.Length)];
-    }
+	private async Task GenerateInitialWords()
+	{
+		string prompt = "Generate 2 random nouns suitable for a word combination game. " +
+					   "Each word MUST be unique and a single word (no spaces). " +
+					   "Separate words with commas. " +
+					   "Reply with ONLY the comma-separated list.";
 
-    private void GenerateFallbackWords()
-    {
-        activeWords.Clear();
-        allUsedWords.Clear();
+		try
+		{
+			string response = await ChatGPTClient.Instance.SendChatRequest(prompt);
+			List<string> newWords = new List<string>();
 
-        // Add fallback words until we have 30
-        while (activeWords.Count < 30)
-        {
-            string word = GetFallbackWord();
-            if (!allUsedWords.Contains(word))
-            {
-                activeWords.Add(word);
-                allUsedWords.Add(word);
-            }
-        }
-    }
+			foreach (string word in response.Split(','))
+			{
+				string cleanWord = word.Trim().ToLower();
+				if (!string.IsNullOrWhiteSpace(cleanWord) && !allUsedWords.Contains(cleanWord))
+				{
+					var metadata = await ObjectMetadataAPI.Instance.GetObjectMetadata(cleanWord);
+					metadata.word = cleanWord; // Set the word in metadata
 
-    private IEnumerator MonitorWordCount()
-    {
-        while (true)
-        {
-            if (activeWords.Count <= minWordsBeforeReplenish && !isReplenishing)
-            {
-                StartCoroutine(ReplenishWords());
-            }
-            yield return new WaitForSeconds(1f);
-        }
-    }
+					elementDatabase[cleanWord] = metadata;
+					newWords.Add(cleanWord);
+					allUsedWords.Add(cleanWord);
+					discoveredWords.Add(cleanWord);
+				}
+			}
 
-    private IEnumerator ReplenishWords()
-    {
-        if (isReplenishing) yield break;
-        isReplenishing = true;
-        
-        // Random delay before replenishing
-        float delay = Random.Range(minReplenishDelay, maxReplenishDelay);
-        yield return new WaitForSeconds(delay);
+			while (newWords.Count < 2)
+			{
+				string fallbackWord = GetFallbackWord();
+				if (!allUsedWords.Contains(fallbackWord))
+				{
+					var metadata = await ObjectMetadataAPI.Instance.GetObjectMetadata(fallbackWord);
+					metadata.word = fallbackWord; // Set the word in metadata
 
-        GenerateNewWords();
-    }
+					elementDatabase[fallbackWord] = metadata;
+					newWords.Add(fallbackWord);
+					allUsedWords.Add(fallbackWord);
+					discoveredWords.Add(fallbackWord);
+				}
+			}
 
-    private async void GenerateNewWords()
-    {
-        string prompt = "Generate a list of exactly 15 random nouns that would be fun in a word combination game. " +
-                       "Each word MUST be unique and a single word (no spaces). " +
-                       "Mix of everyday items, fun concepts, and interesting objects. " +
-                       "Reply with ONLY the comma-separated list.";
+			activeWords = newWords;
+			Debug.Log($"Generated {activeWords.Count} initial words");
+		}
+		catch (System.Exception e)
+		{
+			Debug.LogError($"Failed to get random words: {e.Message}");
+			GenerateFallbackWords();
+		}
+	}
 
-        try
-        {
-            string response = await ChatGPTClient.Instance.SendChatRequest(prompt);
-            List<string> newWords = new List<string>();
+	private IEnumerator MonitorObjectCount()
+	{
+		while (true)
+		{
+			activeElements.RemoveAll(item => item == null);
 
-            foreach (string word in response.Split(','))
-            {
-                string cleanWord = word.Trim().ToLower();
-                if (!string.IsNullOrWhiteSpace(cleanWord) && !allUsedWords.Contains(cleanWord))
-                {
-                    newWords.Add(cleanWord);
-                    allUsedWords.Add(cleanWord);
-                }
-            }
+			if (activeElements.Count < maximumObjects && discoveredWords.Count > 0 && !isSpawning)
+			{
+				List<string> availableWords = new List<string>();
+				foreach (string word in discoveredWords)
+				{
+					if (!activeWords.Contains(word))
+					{
+						availableWords.Add(word);
+					}
+				}
 
-            StartCoroutine(SpawnNewWords(newWords));
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"Failed to replenish words: {e.Message}");
-            isReplenishing = false;
-        }
-    }
+				if (availableWords.Count > 0 && activeElements.Count < minimumObjects)
+				{
+					StartCoroutine(SpawnNewObject());
+				}
+			}
+			yield return new WaitForSeconds(0.5f);
+		}
+	}
 
-    private IEnumerator SpawnNewWords(List<string> newWords)
-    {
-        foreach (string word in newWords)
-        {
-            Vector3 basePosition = new Vector3(0, spawnHeight, 0) + spawnCenterOffset;
-            int attempts = 0;
-            const int maxAttempts = 10;
+	private IEnumerator SpawnNewObject()
+	{
+		isSpawning = true;
+		float delay = Random.Range(minSpawnDelay, maxSpawnDelay);
+		yield return new WaitForSeconds(delay);
 
-            while (attempts < maxAttempts)
-            {
-                Vector3 randomOffset = Random.insideUnitSphere * spawnRadius;
-                randomOffset.y = 0;
-                Vector3 spawnPosition = basePosition + randomOffset;
-                spawnPosition.y = spawnHeight;
+		List<string> availableWords = new List<string>();
+		foreach (string word in discoveredWords)
+		{
+			if (!activeWords.Contains(word))
+			{
+				availableWords.Add(word);
+			}
+		}
 
-                if (IsValidSpawnPosition(spawnPosition))
-                {
-                    activeWords.Add(word);
-                    SpawnElement(word, spawnPosition);
-                    yield return new WaitForSeconds(0.2f);
-                    break;
-                }
-                attempts++;
-            }
-        }
+		if (availableWords.Count > 0)
+		{
+			string selectedWord = availableWords[Random.Range(0, availableWords.Count)];
+			SpawnElementNearPlayer(selectedWord);
+			activeWords.Add(selectedWord);
+		}
 
-        isReplenishing = false;
-    }
+		isSpawning = false;
+	}
 
-    private IEnumerator SpawnInitialResources()
-    {
-        Vector3 basePosition = new Vector3(0, spawnHeight, 0) + spawnCenterOffset;
-        int attempts = 0;
-        int maxAttempts = totalItemsToSpawn * 10; // Prevent infinite loops
-        int itemsSpawned = 0;
+	private void SpawnElementNearPlayer(string word)
+	{
+		Vector2 randomCircle = Random.insideUnitCircle * spawnRadius;
+		Vector3 spawnPosition = playerTransform.position + new Vector3(randomCircle.x, spawnHeight, randomCircle.y);
 
-        while (itemsSpawned < totalItemsToSpawn && attempts < maxAttempts)
-        {
-            // Get random position within spawn radius
-            Vector3 randomOffset = Random.insideUnitSphere * spawnRadius;
-            randomOffset.y = 0; // Keep height consistent
-            Vector3 spawnPosition = basePosition + randomOffset;
-            spawnPosition.y = spawnHeight;
+		if (elementDatabase.TryGetValue(word, out ObjectMetadata metadata))
+		{
+			LLement newElement = SpawnElement(word, spawnPosition, metadata);
+			activeElements.Add(newElement);
+		}
+		else
+		{
+			Debug.LogError($"No metadata found for word: {word}");
+		}
+	}
 
-            // Check if position is valid
-            if (IsValidSpawnPosition(spawnPosition))
-            {
-                // Get random word from our list
-                string randomWord = activeWords[Random.Range(0, activeWords.Count)];
-                SpawnElement(randomWord, spawnPosition);
-                itemsSpawned++;
-                yield return new WaitForSeconds(0.1f);
-            }
+	public async void MergeElements(LLement element1, LLement element2)
+	{
+		string name1 = element1.ElementName.ToLower();
+		string name2 = element2.ElementName.ToLower();
 
-            attempts++;
-        }
+		Vector3 mergePosition = FindMidpoint(element1.transform.position, element2.transform.position);
 
-        if (attempts >= maxAttempts)
-        {
-            Debug.LogWarning("Reached maximum spawn attempts - some items may not have been spawned.");
-        }
-    }
+		activeElements.Remove(element1);
+		activeElements.Remove(element2);
+		activeWords.Remove(name1);
+		activeWords.Remove(name2);
 
-    private bool IsValidSpawnPosition(Vector3 position)
-    {
-        // Check each exclusion zone
-        foreach (var zone in exclusionZones)
-        {
-            // If position is within any exclusion zone's radius, it's invalid
-            if (Vector3.Distance(position, zone.center) < zone.radius)
-            {
-                return false;
-            }
-        }
-        return true;
-    }
+		ParticleSystem mergeEffect = SpawnMergeEffect(mergePosition);
 
-    public async void MergeElements(LLement llement1, LLement llement2)
-    {
-        string name1 = llement1.ElementName;
-        string name2 = llement2.ElementName;
+		string prompt = $"You are helping with a word combination game. When combining {name1} with {name2}, " +
+					   $"what new word is created? Say ONLY one simple word. Keep it creative and engaging. Do not make up words.";
 
-        // Remove the words from active list
-        activeWords.Remove(name1.ToLower());
-        activeWords.Remove(name2.ToLower());
+		string newWord = await ChatGPTClient.Instance.SendChatRequest(prompt);
+		newWord = newWord.Replace(".", "").Trim().ToLower();
 
-        Vector3 mergePosition = FindMidpoint(llement1.transform.position, llement2.transform.position) + (Vector3.up * 0.5f);
+		// Get metadata for new word
+		ObjectMetadata metadata = await ObjectMetadataAPI.Instance.GetObjectMetadata(newWord);
+		metadata.word = newWord;
 
-        ParticleSystem mergeEffect = SpawnMergeEffect(mergePosition);
+		// Calculate points
+		int points = CalculatePoints(newWord, metadata.emoji, name1, name2);
+		playerScore += points;
+		UpdateScoreDisplay();
 
-        llement1.gameObject.SetActive(false);
-        llement2.gameObject.SetActive(false);
+		// Store metadata
+		elementDatabase[newWord] = metadata;
 
-        string response = await ChatGPTClient.Instance.SendChatRequest(
-            "What object or concept comes to mind when I combine " + name1 + " with " + name2 +
-            "? Say ONLY one simple word that represents an object or concept. Keep it simple, creative and engaging for a game where players combine elements. Do not make up words."
-        );
-        response = response.Replace(".", "").Trim().ToLower();
+		// Destroy original objects
+		Destroy(element1.gameObject);
+		Destroy(element2.gameObject);
 
-        await Task.Delay((int)(mergeEffectDuration * 1000));
+		await Task.Delay((int)(mergeEffectDuration * 1000));
 
-        Destroy(llement1.gameObject);
-        Destroy(llement2.gameObject);
+		if (!allUsedWords.Contains(newWord))
+		{
+			allUsedWords.Add(newWord);
+			discoveredWords.Add(newWord);
+			Debug.Log($"New element discovered: {newWord} ({metadata.emoji}) (+{points} points)");
+		}
+		else
+		{
+			Debug.Log($"Created existing element: {newWord} ({metadata.emoji}) (+{points} points)");
+		}
 
-        if (!allUsedWords.Contains(response))
-        {
-            allUsedWords.Add(response);
-            activeWords.Add(response);
-        }
-        SpawnElement(response, mergePosition);
+		// Spawn new combined element
+		LLement newLElement = SpawnElement(newWord, mergePosition, metadata);
+		activeElements.Add(newLElement);
+		activeWords.Add(newWord);
 
-        if (mergeEffect != null)
-        {
-            mergeEffect.Stop(true, ParticleSystemStopBehavior.StopEmitting);
-            Destroy(mergeEffect.gameObject, mergeEffect.main.duration + mergeEffect.main.startLifetime.constantMax);
-        }
-    }
+		if (mergeEffect != null)
+		{
+			mergeEffect.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+			Destroy(mergeEffect.gameObject, mergeEffect.main.duration + mergeEffect.main.startLifetime.constantMax);
+		}
+	}
 
-    private ParticleSystem SpawnMergeEffect(Vector3 position)
-    {
-        if (mergeEffectPrefab != null)
-        {
-            ParticleSystem effect = Instantiate(mergeEffectPrefab, position, Quaternion.identity);
-            effect.transform.localScale = Vector3.one * mergeEffectScale;
-            effect.Play();
-            return effect;
-        }
-        return null;
-    }
+	private ParticleSystem SpawnMergeEffect(Vector3 position)
+	{
+		if (mergeEffectPrefab != null)
+		{
+			ParticleSystem effect = Instantiate(mergeEffectPrefab, position, Quaternion.identity);
+			effect.transform.localScale = Vector3.one * mergeEffectScale;
+			effect.Play();
+			return effect;
+		}
+		return null;
+	}
 
-    public void SpawnElement(string name, Vector3 pos)
-    {
-        LLement newElement = Instantiate(elementPrefab, pos, Quaternion.identity).GetComponent<LLement>();
-        newElement.SetElementName(name);
-    }
+	public LLement SpawnElement(string word, Vector3 pos, ObjectMetadata metadata)
+	{
+		LLement newElement = Instantiate(elementPrefab, pos, Quaternion.identity).GetComponent<LLement>();
+		newElement.SetElementName(word, metadata);
+		return newElement;
+	}
 
-    public static Vector3 FindMidpoint(Vector3 pointA, Vector3 pointB)
-    {
-        return (pointA + pointB) / 2;
-    }
+	private int CalculatePoints(string newWord, string newEmoji, string parent1, string parent2)
+	{
+		int points = 0;
 
-    public float SizeConverter(float sizeFactor)
-    {
-        return sizeFactor / 4f;
-    }
+		// New word bonus
+		if (!elementDatabase.ContainsKey(newWord))
+		{
+			points += 1;
+			Debug.Log("Point awarded: New word");
+		}
+		else
+		{
+			return 0; // Duplicate combination
+		}
 
-#if UNITY_EDITOR
-    private void OnDrawGizmos()
-    {
-        // Draw main spawn area
-        Gizmos.color = Color.green;
-        Vector3 spawnCenter = transform.position + new Vector3(0, spawnHeight, 0) + spawnCenterOffset;
-        Gizmos.DrawWireSphere(spawnCenter, spawnRadius);
+		// Different emoji bonus
+		bool differentEmoji = true;
+		if (elementDatabase.ContainsKey(parent1))
+		{
+			if (elementDatabase[parent1].emoji == newEmoji) differentEmoji = false;
+		}
+		if (elementDatabase.ContainsKey(parent2))
+		{
+			if (elementDatabase[parent2].emoji == newEmoji) differentEmoji = false;
+		}
+		if (differentEmoji)
+		{
+			points += 1;
+			Debug.Log("Point awarded: Different emoji");
+		}
 
-        // Draw exclusion zones
-        Gizmos.color = Color.red;
-        foreach (var zone in exclusionZones)
-        {
-            Gizmos.DrawWireSphere(zone.center, zone.radius);
-        }
-    }
-#endif
+		// Distant word bonus
+		bool isDistant = true;
+		foreach (var existingWord in discoveredWords)
+		{
+			if (CalculateLevenshteinSimilarity(newWord, existingWord) > similarityThreshold)
+			{
+				isDistant = false;
+				break;
+			}
+		}
+		if (isDistant)
+		{
+			points += 1;
+			Debug.Log("Point awarded: Distant word");
+		}
+
+		return points;
+	}
+
+	private float CalculateLevenshteinSimilarity(string s1, string s2)
+	{
+		int distance = CalculateLevenshteinDistance(s1, s2);
+		int maxLength = Mathf.Max(s1.Length, s2.Length);
+		return 1 - ((float)distance / maxLength);
+	}
+
+	private int CalculateLevenshteinDistance(string s1, string s2)
+	{
+		int[,] d = new int[s1.Length + 1, s2.Length + 1];
+
+		for (int i = 0; i <= s1.Length; i++)
+			d[i, 0] = i;
+
+		for (int j = 0; j <= s2.Length; j++)
+			d[0, j] = j;
+
+		for (int j = 1; j <= s2.Length; j++)
+		{
+			for (int i = 1; i <= s1.Length; i++)
+			{
+				if (s1[i - 1] == s2[j - 1])
+					d[i, j] = d[i - 1, j - 1];
+				else
+					d[i, j] = Mathf.Min(
+						d[i - 1, j] + 1,     // deletion
+						Mathf.Min(
+							d[i, j - 1] + 1,  // insertion
+							d[i - 1, j - 1] + 1 // substitution
+						)
+					);
+			}
+		}
+
+		return d[s1.Length, s2.Length];
+	}
+
+	private string GetFallbackWord()
+	{
+		string[] fallbackWords = {
+			"book", "phone", "cup", "bag", "chair", "desk", "lamp", "pen", "clock", "mirror",
+			"lightsaber", "pokeball", "wand", "ring", "shield", "sword", "crown", "gem", "staff", "orb"
+		};
+
+		return fallbackWords[Random.Range(0, fallbackWords.Length)];
+	}
+
+	private void GenerateFallbackWords()
+	{
+		activeWords.Clear();
+		allUsedWords.Clear();
+		discoveredWords.Clear();
+
+		// Generate just 2 initial words
+		for (int i = 0; i < minimumObjects; i++)
+		{
+			string word = GetFallbackWord();
+			while (allUsedWords.Contains(word))
+			{
+				word = GetFallbackWord();
+			}
+			activeWords.Add(word);
+			allUsedWords.Add(word);
+			discoveredWords.Add(word);
+		}
+	}
+
+	public float SizeConverter(float sizeFactor)
+	{
+		return sizeFactor / 4f;
+	}
 }

@@ -7,7 +7,8 @@ using System.Collections.Generic;
 [Serializable]
 public class ObjectMetadata
 {
-	public string emoji = "🎲"; // Default emoji
+	public string word;
+	public string emoji = "🎲";
 	public float scale = 1f;
 	public float mass = 1f;
 	public List<string> colors = new List<string> { "#FFFFFF" };
@@ -15,7 +16,7 @@ public class ObjectMetadata
 	// Constructor for default metadata
 	public ObjectMetadata(string objectName)
 	{
-		// Set some sensible defaults based on the object name
+		word = objectName;
 		emoji = GetDefaultEmoji(objectName);
 		scale = 1f;
 		mass = 1f;
@@ -39,7 +40,27 @@ public class ObjectMetadata
 			case "tree": return "🌲";
 			case "rock": return "🪨";
 			case "earth": return "🌍";
-			default: return "❓"; // Default fallback emoji
+			case "book": return "📚";
+			case "phone": return "📱";
+			case "cup": return "☕";
+			case "bag": return "👜";
+			case "chair": return "💺";
+			case "desk": return "🪑";
+			case "lamp": return "💡";
+			case "pen": return "✒️";
+			case "clock": return "⏰";
+			case "mirror": return "🪞";
+			case "sword": return "⚔️";
+			case "crown": return "👑";
+			case "gem": return "💎";
+			case "staff": return "🏑";
+			case "orb": return "🔮";
+			case "lightsaber": return "⚔️";
+			case "pokeball": return "⚪";
+			case "wand": return "🪄";
+			case "ring": return "💍";
+			case "shield": return "🛡️";
+			default: return "❓";
 		}
 	}
 }

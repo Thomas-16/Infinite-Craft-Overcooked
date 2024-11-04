@@ -7,28 +7,42 @@ public class GameManager : MonoBehaviour
 {
 	public static GameManager Instance { get; private set; }
 
+	#region Inspector References
 	[SerializeField] private GameObject elementPrefab;
 	[SerializeField] private Transform playerTransform;
+	#endregion
 
+	#region Spawn Settings
 	[Header("Spawn Settings")]
 	[SerializeField] private float spawnHeight = 1.5f;
-	[SerializeField] private float spawnRadius = 5f;
+	[SerializeField] private float minSpawnRadius = 2f; // Minimum distance from player
+	[SerializeField] private float maxSpawnRadius = 5f; // Maximum distance from player
+	[SerializeField] private float minDistanceBetweenElements = 1f; // Minimum distance between LLements
+	[SerializeField] private int maxSpawnAttempts = 30; // Maximum attempts to find a valid spawn position
+	#endregion
 
+	#region Game Settings
 	[Header("Game Settings")]
 	[SerializeField] private int minimumObjects = 2;
 	[SerializeField] private int maximumObjects = 10;
 	[SerializeField] private float minSpawnDelay = 1f;
 	[SerializeField] private float maxSpawnDelay = 3f;
 	[SerializeField] private float similarityThreshold = 0.3f;
+	#endregion
 
+	#region UI Settings
 	[Header("UI Settings")]
-	[SerializeField] private TMPro.TextMeshProUGUI scoreText;
+	[SerializeField] private UIPanel scorePanel;
+	#endregion
 
+	#region Merge Effect Settings
 	[Header("Merge Effect Settings")]
 	[SerializeField] private ParticleSystem mergeEffectPrefab;
 	[SerializeField] private float mergeEffectDuration = 1f;
 	[SerializeField] private float mergeEffectScale = 1f;
+	#endregion
 
+	#region State Management
 	private Dictionary<string, ObjectMetadata> elementDatabase = new Dictionary<string, ObjectMetadata>();
 	private HashSet<string> discoveredWords = new HashSet<string>();
 	private HashSet<string> allUsedWords = new HashSet<string>();
@@ -36,35 +50,30 @@ public class GameManager : MonoBehaviour
 	private List<LLement> activeElements = new List<LLement>();
 	private int playerScore = 0;
 	private bool isSpawning = false;
+	#endregion
 
+	#region Public Methods
 	public List<string> GetActiveWords() => new List<string>(activeWords);
+	#endregion
 
-	private void Awake()
-	{
-		Instance = this;
-	}
+	#region Initialization
+	private void Awake() => Instance = this;
 
 	private void Start()
 	{
-		if (playerTransform == null)
-		{
-			playerTransform = GameObject.FindGameObjectWithTag("Player")?.transform;
-			if (playerTransform == null)
-			{
-				Debug.LogError("Player transform not found! Please assign it in the inspector or tag your player with 'Player'");
-				return;
-			}
-		}
-
+		InitializePlayerTransform();
 		StartCoroutine(InitializeAndSpawn());
 		StartCoroutine(MonitorObjectCount());
 	}
 
-	private void UpdateScoreDisplay()
+	private void InitializePlayerTransform()
 	{
-		if (scoreText != null)
+		if (playerTransform != null) return;
+
+		playerTransform = GameObject.FindGameObjectWithTag("Player")?.transform;
+		if (playerTransform == null)
 		{
-			scoreText.text = $"Score: {playerScore}";
+			Debug.LogError("Player transform not found! Please assign it in the inspector or tag your player with 'Player'");
 		}
 	}
 
@@ -87,12 +96,18 @@ public class GameManager : MonoBehaviour
 		{
 			if (elementDatabase.TryGetValue(word, out ObjectMetadata metadata))
 			{
-				Vector2 randomCircle = Random.insideUnitCircle * spawnRadius;
-				Vector3 spawnPosition = playerTransform.position + new Vector3(randomCircle.x, spawnHeight, randomCircle.y);
-
-				LLement newElement = SpawnElement(word, spawnPosition, metadata);
-				activeElements.Add(newElement);
-				yield return new WaitForSeconds(0.2f);
+				Vector3? spawnPosition = CalculateSpawnPosition();
+				if (spawnPosition.HasValue)
+				{
+					LLement newElement = SpawnElement(word, spawnPosition.Value, metadata);
+					activeElements.Add(newElement);
+					Debug.Log($"Initial object spawned: {word}, metadata scale: {metadata.scale}");
+					yield return new WaitForSeconds(0.2f);
+				}
+				else
+				{
+					Debug.LogWarning($"Failed to spawn initial object {word} - no valid position found");
+				}
 			}
 			else
 			{
@@ -100,12 +115,141 @@ public class GameManager : MonoBehaviour
 			}
 		}
 	}
+	#endregion
 
-	private Vector3 FindMidpoint(Vector3 pointA, Vector3 pointB)
+	#region LLement Management
+	private async Task<LLement> CreateLLement(string elementName, Vector3 position)
 	{
-		return (pointA + pointB) / 2;
+		ObjectMetadata metadata = await GetOrFetchMetadata(elementName);
+		return SpawnElement(elementName, position, metadata);
 	}
 
+	private async Task<ObjectMetadata> GetOrFetchMetadata(string elementName)
+	{
+		if (elementDatabase.TryGetValue(elementName, out ObjectMetadata metadata))
+		{
+			return metadata;
+		}
+
+		metadata = await ObjectMetadataAPI.Instance.GetObjectMetadata(elementName);
+		metadata.word = elementName;
+		elementDatabase[elementName] = metadata;
+		return metadata;
+	}
+
+	private LLement SpawnElement(string word, Vector3 position, ObjectMetadata metadata)
+	{
+		LLement newElement = Instantiate(elementPrefab, position, Quaternion.identity).GetComponent<LLement>();
+		newElement.SetElementName(word, metadata);
+		Debug.Log("spawned object: " + word);
+		return newElement;
+	}
+
+	public async void MergeElements(LLement element1, LLement element2)
+	{
+		string name1 = element1.ElementName.ToLower();
+		string name2 = element2.ElementName.ToLower();
+		Vector3 mergePosition = FindMidpoint(element1.transform.position, element2.transform.position);
+
+		// Remove from active tracking
+		activeElements.Remove(element1);
+		activeElements.Remove(element2);
+		activeWords.Remove(name1);
+		activeWords.Remove(name2);
+
+		// Start merge animations
+		ParticleSystem mergeEffect = SpawnMergeEffect(mergePosition);
+		Debug.Log("!!!!!!MERGE EFFECT: " + element1.ElementName + ", " + element2.ElementName);
+
+		// Create a TaskCompletionSource for tracking animation completion
+		var animationComplete = new TaskCompletionSource<bool>();
+		int completedAnimations = 0;
+
+		void OnAnimationComplete()
+		{
+			completedAnimations++;
+			if (completedAnimations >= 2)
+			{
+				animationComplete.SetResult(true);
+			}
+		}
+
+		// Start merge animations on both elements
+		element1.StartMergeAnimation(mergePosition, () => {
+			Destroy(element1.gameObject);
+			OnAnimationComplete();
+		});
+
+		element2.StartMergeAnimation(mergePosition, () => {
+			Destroy(element2.gameObject);
+			OnAnimationComplete();
+		});
+
+		Debug.Log("!!!!!!MERGING START");
+		// Wait for animations to complete
+		await Task.WhenAll(animationComplete.Task);
+		Debug.Log("!!!!!!MERGING complete");
+
+		// Generate new element
+		string newWord = await GenerateNewWord(name1, name2);
+		ObjectMetadata metadata = await GetOrFetchMetadata(newWord);
+
+		// Calculate and award points
+		AwardPoints(newWord, metadata.emoji, name1, name2);
+
+		// Create new element after effect duration
+		//await Task.Delay((int)(mergeEffectDuration * 1000));
+		Debug.Log("!!!!!! CreateAndTrackNewElement");
+
+		await CreateAndTrackNewElement(newWord, mergePosition, metadata);
+
+		// Cleanup
+		Debug.Log("!!!!!! CLEANUP");
+		CleanupMergeEffect(mergeEffect);
+	}
+
+	private void RemoveElements(LLement element1, LLement element2, string name1, string name2)
+	{
+		activeElements.Remove(element1);
+		activeElements.Remove(element2);
+		activeWords.Remove(name1);
+		activeWords.Remove(name2);
+		Destroy(element1.gameObject);
+		Destroy(element2.gameObject);
+	}
+
+	private async Task<string> GenerateNewWord(string word1, string word2)
+	{
+		string prompt = $"What word do you associate with the combination of a {word1} with a {word2}?" +
+					   $"Say ONLY one simple word. It must be a real word. It must be a noun. You can use famous pop culture examples too. Do not make up words." +
+					   $"Here are some examples: 'Mermaid' and 'Japan' combines to create 'Sushi'. 'Curse' and 'Island' creates Bermuda. Dragon and Leviathan creates Megalodon.";
+		;
+
+		string newWord = await ChatGPTClient.Instance.SendChatRequest(prompt);
+		return newWord.Replace(".", "").Trim().ToLower();
+	}
+
+	private async Task CreateAndTrackNewElement(string newWord, Vector3 position, ObjectMetadata metadata)
+	{
+		if (!allUsedWords.Contains(newWord))
+		{
+			TrackNewWord(newWord);
+		}
+
+		LLement newElement = await CreateLLement(newWord, position);
+		activeElements.Add(newElement);
+		activeWords.Add(newWord);
+	}
+
+	private void TrackNewWord(string newWord)
+	{
+		allUsedWords.Add(newWord);
+		discoveredWords.Add(newWord);
+		Debug.Log($"New element discovered: {newWord}");
+	}
+	#endregion
+
+	#region Word Generation and Management
 	private async Task GenerateInitialWords()
 	{
 		string prompt = "Generate 2 random nouns suitable for a word combination game. " +
@@ -124,7 +268,7 @@ public class GameManager : MonoBehaviour
 				if (!string.IsNullOrWhiteSpace(cleanWord) && !allUsedWords.Contains(cleanWord))
 				{
 					var metadata = await ObjectMetadataAPI.Instance.GetObjectMetadata(cleanWord);
-					metadata.word = cleanWord; // Set the word in metadata
+					metadata.word = cleanWord;
 
 					elementDatabase[cleanWord] = metadata;
 					newWords.Add(cleanWord);
@@ -139,7 +283,7 @@ public class GameManager : MonoBehaviour
 				if (!allUsedWords.Contains(fallbackWord))
 				{
 					var metadata = await ObjectMetadataAPI.Instance.GetObjectMetadata(fallbackWord);
-					metadata.word = fallbackWord; // Set the word in metadata
+					metadata.word = fallbackWord;
 
 					elementDatabase[fallbackWord] = metadata;
 					newWords.Add(fallbackWord);
@@ -158,6 +302,37 @@ public class GameManager : MonoBehaviour
 		}
 	}
 
+	private void GenerateFallbackWords()
+	{
+		activeWords.Clear();
+		allUsedWords.Clear();
+		discoveredWords.Clear();
+
+		for (int i = 0; i < minimumObjects; i++)
+		{
+			string word = GetFallbackWord();
+			while (allUsedWords.Contains(word))
+			{
+				word = GetFallbackWord();
+			}
+			activeWords.Add(word);
+			allUsedWords.Add(word);
+			discoveredWords.Add(word);
+		}
+	}
+
+	private string GetFallbackWord()
+	{
+		string[] fallbackWords = {
+			"book", "phone", "cup", "bag", "chair", "desk", "lamp", "pen", "clock", "mirror",
+			"lightsaber", "pokeball", "wand", "ring", "shield", "sword", "crown", "gem", "staff", "orb"
+		};
+
+		return fallbackWords[Random.Range(0, fallbackWords.Length)];
+	}
+	#endregion
+
+	#region Spawning System
 	private IEnumerator MonitorObjectCount()
 	{
 		while (true)
@@ -166,14 +341,7 @@ public class GameManager : MonoBehaviour
 
 			if (activeElements.Count < maximumObjects && discoveredWords.Count > 0 && !isSpawning)
 			{
-				List<string> availableWords = new List<string>();
-				foreach (string word in discoveredWords)
-				{
-					if (!activeWords.Contains(word))
-					{
-						availableWords.Add(word);
-					}
-				}
+				List<string> availableWords = GetAvailableWords();
 
 				if (availableWords.Count > 0 && activeElements.Count < minimumObjects)
 				{
@@ -184,12 +352,8 @@ public class GameManager : MonoBehaviour
 		}
 	}
 
-	private IEnumerator SpawnNewObject()
+	private List<string> GetAvailableWords()
 	{
-		isSpawning = true;
-		float delay = Random.Range(minSpawnDelay, maxSpawnDelay);
-		yield return new WaitForSeconds(delay);
-
 		List<string> availableWords = new List<string>();
 		foreach (string word in discoveredWords)
 		{
@@ -198,111 +362,118 @@ public class GameManager : MonoBehaviour
 				availableWords.Add(word);
 			}
 		}
+		return availableWords;
+	}
+	private IEnumerator SpawnNewObject()
+	{
+		isSpawning = true;
+		yield return new WaitForSeconds(Random.Range(minSpawnDelay, maxSpawnDelay));
 
+		List<string> availableWords = GetAvailableWords();
 		if (availableWords.Count > 0)
 		{
 			string selectedWord = availableWords[Random.Range(0, availableWords.Count)];
-			SpawnElementNearPlayer(selectedWord);
-			activeWords.Add(selectedWord);
+			Vector3? spawnPosition = CalculateSpawnPosition();
+
+			if (spawnPosition.HasValue)
+			{
+				StartCoroutine(SpawnElementCoroutine(selectedWord, spawnPosition));
+				activeWords.Add(selectedWord);
+			}
+			else
+			{
+				Debug.LogWarning($"Failed to spawn {selectedWord} - no valid position found");
+			}
 		}
 
 		isSpawning = false;
 	}
 
-	private void SpawnElementNearPlayer(string word)
-	{
-		Vector2 randomCircle = Random.insideUnitCircle * spawnRadius;
-		Vector3 spawnPosition = playerTransform.position + new Vector3(randomCircle.x, spawnHeight, randomCircle.y);
 
-		if (elementDatabase.TryGetValue(word, out ObjectMetadata metadata))
+	// New coroutine to handle the async spawning
+	private IEnumerator SpawnElementCoroutine(string word, Vector3? position)
+	{
+		if (!position.HasValue)
 		{
-			LLement newElement = SpawnElement(word, spawnPosition, metadata);
-			activeElements.Add(newElement);
+			Debug.LogWarning($"Failed to spawn {word} - no valid position found");
+			yield break;
 		}
-		else
+
+		var task = CreateLLement(word, position.Value);
+		while (!task.IsCompleted)
 		{
-			Debug.LogError($"No metadata found for word: {word}");
+			yield return null;
 		}
+
+		LLement newElement = task.Result;
+		activeElements.Add(newElement);
 	}
 
-	public async void MergeElements(LLement element1, LLement element2)
+	// Keep this method for other async calls
+	/*private async Task SpawnElementNearPlayer(string word)
 	{
-		string name1 = element1.ElementName.ToLower();
-		string name2 = element2.ElementName.ToLower();
+		Vector3 spawnPosition = CalculateSpawnPosition();
+		LLement newElement = await CreateLLement(word, spawnPosition);
+		activeElements.Add(newElement);
+	}*/
 
-		Vector3 mergePosition = FindMidpoint(element1.transform.position, element2.transform.position);
-
-		activeElements.Remove(element1);
-		activeElements.Remove(element2);
-		activeWords.Remove(name1);
-		activeWords.Remove(name2);
-
-		ParticleSystem mergeEffect = SpawnMergeEffect(mergePosition);
-
-		string prompt = $"You are helping with a word combination game. When combining {name1} with {name2}, " +
-					   $"what new word is created? Say ONLY one simple word. Keep it creative and engaging. Do not make up words.";
-
-		string newWord = await ChatGPTClient.Instance.SendChatRequest(prompt);
-		newWord = newWord.Replace(".", "").Trim().ToLower();
-
-		// Get metadata for new word
-		ObjectMetadata metadata = await ObjectMetadataAPI.Instance.GetObjectMetadata(newWord);
-		metadata.word = newWord;
-
-		// Calculate points
-		int points = CalculatePoints(newWord, metadata.emoji, name1, name2);
-		playerScore += points;
-		UpdateScoreDisplay();
-
-		// Store metadata
-		elementDatabase[newWord] = metadata;
-
-		// Destroy original objects
-		Destroy(element1.gameObject);
-		Destroy(element2.gameObject);
-
-		await Task.Delay((int)(mergeEffectDuration * 1000));
-
-		if (!allUsedWords.Contains(newWord))
-		{
-			allUsedWords.Add(newWord);
-			discoveredWords.Add(newWord);
-			Debug.Log($"New element discovered: {newWord} ({metadata.emoji}) (+{points} points)");
-		}
-		else
-		{
-			Debug.Log($"Created existing element: {newWord} ({metadata.emoji}) (+{points} points)");
-		}
-
-		// Spawn new combined element
-		LLement newLElement = SpawnElement(newWord, mergePosition, metadata);
-		activeElements.Add(newLElement);
-		activeWords.Add(newWord);
-
-		if (mergeEffect != null)
-		{
-			mergeEffect.Stop(true, ParticleSystemStopBehavior.StopEmitting);
-			Destroy(mergeEffect.gameObject, mergeEffect.main.duration + mergeEffect.main.startLifetime.constantMax);
-		}
-	}
-
-	private ParticleSystem SpawnMergeEffect(Vector3 position)
+	private Vector3? CalculateSpawnPosition()
 	{
-		if (mergeEffectPrefab != null)
+		for (int attempt = 0; attempt < maxSpawnAttempts; attempt++)
 		{
-			ParticleSystem effect = Instantiate(mergeEffectPrefab, position, Quaternion.identity);
-			effect.transform.localScale = Vector3.one * mergeEffectScale;
-			effect.Play();
-			return effect;
+			// Generate a random angle
+			float angle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
+
+			// Generate a random distance between min and max radius
+			float distance = Mathf.Sqrt(Random.Range(minSpawnRadius * minSpawnRadius, maxSpawnRadius * maxSpawnRadius));
+
+			// Calculate position
+			float x = Mathf.Cos(angle) * distance;
+			float z = Mathf.Sin(angle) * distance;
+			Vector3 potentialPosition = playerTransform.position + new Vector3(x, spawnHeight, z);
+
+			// Check if position is valid (not too close to other LLements)
+			if (IsValidSpawnPosition(potentialPosition))
+			{
+				return potentialPosition;
+			}
 		}
+
+		Debug.LogWarning("Could not find valid spawn position after " + maxSpawnAttempts + " attempts");
 		return null;
 	}
 
-	public LLement SpawnElement(string word, Vector3 pos, ObjectMetadata metadata)
+	private bool IsValidSpawnPosition(Vector3 position)
 	{
-		LLement newElement = Instantiate(elementPrefab, pos, Quaternion.identity).GetComponent<LLement>();
-		newElement.SetElementName(word, metadata);
-		return newElement;
+		// Check distance from all active elements
+		foreach (LLement element in activeElements)
+		{
+			if (element == null) continue;
+
+			float distance = Vector3.Distance(position, element.transform.position);
+			if (distance < minDistanceBetweenElements)
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+	#endregion
+
+	#region Scoring and Points
+	private void UpdateScoreDisplay()
+	{
+		if (scorePanel != null)
+		{
+			scorePanel.SetText($"{playerScore} pts.");
+		}
+	}
+
+	private void AwardPoints(string newWord, string newEmoji, string parent1, string parent2)
+	{
+		int points = CalculatePoints(newWord, newEmoji, parent1, parent2);
+		playerScore += points;
+		UpdateScoreDisplay();
 	}
 
 	private int CalculatePoints(string newWord, string newEmoji, string parent1, string parent2)
@@ -354,6 +525,29 @@ public class GameManager : MonoBehaviour
 
 		return points;
 	}
+	#endregion
+
+	#region Utility Methods
+	private Vector3 FindMidpoint(Vector3 pointA, Vector3 pointB) => (pointA + pointB) / 2;
+
+	private ParticleSystem SpawnMergeEffect(Vector3 position)
+	{
+		if (mergeEffectPrefab == null) return null;
+
+		ParticleSystem effect = Instantiate(mergeEffectPrefab, position, Quaternion.identity);
+		effect.transform.localScale = Vector3.one * mergeEffectScale;
+		effect.Play();
+		return effect;
+	}
+
+	private void CleanupMergeEffect(ParticleSystem effect)
+	{
+		if (effect != null)
+		{
+			effect.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+			Destroy(effect.gameObject, effect.main.duration + effect.main.startLifetime.constantMax);
+		}
+	}
 
 	private float CalculateLevenshteinSimilarity(string s1, string s2)
 	{
@@ -361,7 +555,6 @@ public class GameManager : MonoBehaviour
 		int maxLength = Mathf.Max(s1.Length, s2.Length);
 		return 1 - ((float)distance / maxLength);
 	}
-
 	private int CalculateLevenshteinDistance(string s1, string s2)
 	{
 		int[,] d = new int[s1.Length + 1, s2.Length + 1];
@@ -392,38 +585,6 @@ public class GameManager : MonoBehaviour
 		return d[s1.Length, s2.Length];
 	}
 
-	private string GetFallbackWord()
-	{
-		string[] fallbackWords = {
-			"book", "phone", "cup", "bag", "chair", "desk", "lamp", "pen", "clock", "mirror",
-			"lightsaber", "pokeball", "wand", "ring", "shield", "sword", "crown", "gem", "staff", "orb"
-		};
-
-		return fallbackWords[Random.Range(0, fallbackWords.Length)];
-	}
-
-	private void GenerateFallbackWords()
-	{
-		activeWords.Clear();
-		allUsedWords.Clear();
-		discoveredWords.Clear();
-
-		// Generate just 2 initial words
-		for (int i = 0; i < minimumObjects; i++)
-		{
-			string word = GetFallbackWord();
-			while (allUsedWords.Contains(word))
-			{
-				word = GetFallbackWord();
-			}
-			activeWords.Add(word);
-			allUsedWords.Add(word);
-			discoveredWords.Add(word);
-		}
-	}
-
-	public float SizeConverter(float sizeFactor)
-	{
-		return sizeFactor / 4f;
-	}
+	public float SizeConverter(float sizeFactor) => sizeFactor / 4f;
+	#endregion
 }

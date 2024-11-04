@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.ProBuilder.MeshOperations;
 
 public class Player : MonoBehaviour
 {
@@ -81,6 +82,17 @@ public class Player : MonoBehaviour
 	private bool canSprint => currentSprintResource > 0f;
     private Vector3 initialThrowDirection;  // Add this field at class level
 
+	[Header("Auto Pickup Settings")]
+	[SerializeField] private bool enableAutoPickup = true;
+	[SerializeField] private float autoPickupCooldown = 0.5f;
+	private float lastAutoPickupTime;
+
+	[Header("Merge Trigger Settings")]
+	[SerializeField] private BoxCollider mergeTriggerCollider; // This should be set to "Is Trigger"
+	[SerializeField] private Vector3 defaultTriggerSize = new Vector3(1f, 2f, 1f);
+	[SerializeField] private Vector3 defaultTriggerCenter = new Vector3(0f, 0.0f, 0f);
+	[SerializeField] private float triggerGrowthMultiplier = 1.2f; // How much bigger than the LLement the trigger should be
+
 	protected virtual void Awake()
 	{
 		_character = GetComponent<Character>();
@@ -105,12 +117,84 @@ public class Player : MonoBehaviour
 		InputManager.Instance.inputActions.Player.Sprint.started += OnSprintPressed;
 		InputManager.Instance.inputActions.Player.Sprint.canceled += OnSprintReleased;
 
-		SetupNametag();
+		//SetupNametag();
 		SetupSprintBar();
 		SetupThrowUI();
 
 		defaultWalkSpeed = _character.maxWalkSpeed;
 		currentSprintResource = maxSprintResource;
+	}
+
+	private void UpdateMergeTriggerSize(LLement llementHeld = null)
+	{
+		if (llementHeld != null)
+		{
+			// Get the LLement's collider size and scale
+			BoxCollider llementCollider = llementHeld.GetComponent<BoxCollider>();
+			if (llementCollider != null)
+			{
+				// Account for both the collider size and object's scale
+				Vector3 scaledSize = Vector3.Scale(llementCollider.size, llementHeld.transform.localScale);
+				mergeTriggerCollider.size = scaledSize * triggerGrowthMultiplier;
+				mergeTriggerCollider.size = new Vector3(mergeTriggerCollider.size.x, 10f,mergeTriggerCollider.size.z);
+
+				// Center the trigger on the held object's position
+				mergeTriggerCollider.center = defaultTriggerCenter + Vector3.up * (scaledSize.y * 0.5f);
+			}
+		}
+		else
+		{
+			// Reset to default size when not holding anything
+			mergeTriggerCollider.size = defaultTriggerSize;
+			mergeTriggerCollider.center = defaultTriggerCenter;
+		}
+	}
+
+	private LLement mergeLLement1;
+	private LLement mergeLLement2;
+
+
+	private void OnTriggerEnter(Collider other)
+	{
+		if (!enableAutoPickup)
+			return;
+
+		LLement otherLlement = other.GetComponentInParent<LLement>();
+		if (otherLlement == null || otherLlement.IsPickedUp)
+			return;
+
+		if (!isHoldingObject)
+		{
+			if (otherLlement == mergeLLement1 || otherLlement == mergeLLement2)
+			{
+				return;
+			}
+			if (Time.time - lastAutoPickupTime < autoPickupCooldown)
+				return;
+			Debug.Log("!!!!!!!!IS NOT HOLDING OBJECT");
+
+			// Auto pickup
+			isHoldingObject = true;
+			otherLlement.GetComponent<Rigidbody>().isKinematic = true;
+			otherLlement.Pickup(this);
+			pickedupObject = otherLlement;
+			lastAutoPickupTime = Time.time;
+
+			mergeLLement1 = null;
+			mergeLLement2 = null;
+
+			// Update trigger size for the newly picked up object
+			UpdateMergeTriggerSize(otherLlement);
+		}
+		else if (pickedupObject is LLement currentLlement)
+		{
+			Debug.Log("!!!!!!!!PICKED UP OBJECT: " + pickedupObject.name);
+			// We're holding an LLement and encountered another one - trigger merge
+			DropCurrentObject();
+			mergeLLement1 = currentLlement;
+			mergeLLement2 = otherLlement;
+			GameManager.Instance.MergeElements(currentLlement, otherLlement);
+		}
 	}
 
 	private void SetupThrowUI()
@@ -345,7 +429,18 @@ public class Player : MonoBehaviour
         }
     }
 
-    private void ReleaseThrow()
+	public void DropCurrentObject()
+	{
+		if (isHoldingObject && pickedupObject != null)
+		{
+			isHoldingObject = false;
+			pickedupObject.Drop(this);
+			pickedupObject = null;
+			UpdateMergeTriggerSize(null); // Reset trigger size
+		}
+	}
+
+	private void ReleaseThrow()
     {
         float chargeTime = Mathf.Min(Time.time - throwChargeStartTime, maxChargeTime);
         float chargePercent = chargeTime / maxChargeTime;
@@ -403,53 +498,53 @@ public class Player : MonoBehaviour
     }
 
 	private void HandlePickupInput()
-    {
-        if (InputManager.Instance.GetPickupInput()) // F button pressed
-        {
-            if (!pickupInputActive)
-            {
-                pickupInputActive = true;
-                pickupInputStartTime = Time.time;
-            }
-            
-            // Check for long hold (0.2s) to start charging
-            if (isHoldingObject && !isChargingThrow && Time.time - pickupInputStartTime >= 0.2f)
-            {
-                StartThrowCharge();
-            }
-        }
-        else // F button released
-        {
-            if (pickupInputActive)
-            {
-                if (isChargingThrow)
-                {
-                    // If we were charging, throw
-                    ReleaseThrow();
-                }
-                else if (Time.time - pickupInputStartTime < 0.2f)
-                {
-                    // Quick tap - toggle pickup/drop
-                    if (!isHoldingObject && hoveringObject != null)
-                    {
-                        // Pickup
-                        isHoldingObject = true;
-                        hoveringObject.GetComponent<Rigidbody>().isKinematic = true;
-                        hoveringObject.Pickup(this);
-                        pickedupObject = hoveringObject;
-                    }
-                    else if (isHoldingObject)
-                    {
-                        // Drop
-                        isHoldingObject = false;
-                        pickedupObject.Drop(this);
-                        pickedupObject = null;
-                    }
-                }
-            }
-            pickupInputActive = false;
-        }
-    }
+	{
+		if (InputManager.Instance.GetPickupInput()) // F button pressed
+		{
+			if (!pickupInputActive)
+			{
+				pickupInputActive = true;
+				pickupInputStartTime = Time.time;
+			}
+
+			if (isHoldingObject && !isChargingThrow && Time.time - pickupInputStartTime >= 0.2f)
+			{
+				StartThrowCharge();
+			}
+		}
+		else // F button released
+		{
+			if (pickupInputActive)
+			{
+				if (isChargingThrow)
+				{
+					ReleaseThrow();
+				}
+				else if (Time.time - pickupInputStartTime < 0.2f)
+				{
+					if (!isHoldingObject && hoveringObject != null)
+					{
+						// Pickup
+						isHoldingObject = true;
+						hoveringObject.GetComponent<Rigidbody>().isKinematic = true;
+						hoveringObject.Pickup(this);
+						pickedupObject = hoveringObject;
+
+						// Update trigger size if it's an LLement
+						if (pickedupObject is LLement llement)
+						{
+							UpdateMergeTriggerSize(llement);
+						}
+					}
+					else if (isHoldingObject)
+					{
+						DropCurrentObject(); // This will also reset trigger size
+					}
+				}
+			}
+			pickupInputActive = false;
+		}
+	}
 
 
 	private void OnSprintPressed(InputAction.CallbackContext context)

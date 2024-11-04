@@ -21,6 +21,7 @@ public class LLement : PickupableObject
 	[SerializeField] private Color panelColor = new Color(0f, 0f, 0f, 0.5f);
 
 	[Header("UI Fade Settings")]
+	[SerializeField] private bool alwaysShowUI = true;
 	[SerializeField] private float fadeSpeed = 8f;
 	[SerializeField] private float fadeInAlpha = 1f;
 	[SerializeField] private float fadeOutAlpha = 0f;
@@ -43,6 +44,19 @@ public class LLement : PickupableObject
 
 	[SerializeField]
 	private UIPanel namePanelPrefab;
+
+
+	[Header("Animation Settings")]
+	[SerializeField] private float scaleInDuration = 0.3f;
+	[SerializeField] private float scaleOutDuration = 0.2f;
+	[SerializeField] private AnimationCurve scaleInCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
+	[SerializeField] private AnimationCurve scaleOutCurve = AnimationCurve.EaseInOut(0, 1, 1, 0);
+	[SerializeField] private float moveToMergeDuration = 0.3f;
+	[SerializeField] private AnimationCurve moveToMergeCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
+
+	private bool isScalingIn = false;
+	private bool isScalingOut = false;
+	private Vector3 targetScale;
 
 	private void Awake()
 	{
@@ -115,23 +129,27 @@ public class LLement : PickupableObject
 		{
 			namePanel.SetPanelColor(panelColor);
 			namePanel.SetTextColor(textColor);
-			UpdateUIAlpha(fadeOutAlpha);
+			UpdateUIAlpha(alwaysShowUI ? fadeInAlpha : fadeOutAlpha);
 		}
 	}
 
+
 	protected override void Update()
-    {
-        base.Update();
+	{
+		base.Update();
 
-        bool shouldBeVisible = HoveringPlayer != null || IsPickedUp || isMouseOver;
-        targetAlpha = shouldBeVisible ? fadeInAlpha : fadeOutAlpha;
+		if (!alwaysShowUI)
+		{
+			bool shouldBeVisible = HoveringPlayer != null || IsPickedUp || isMouseOver;
+			targetAlpha = shouldBeVisible ? fadeInAlpha : fadeOutAlpha;
 
-        if (currentAlpha != targetAlpha)
-        {
-            currentAlpha = Mathf.MoveTowards(currentAlpha, targetAlpha, fadeSpeed * Time.deltaTime);
-            UpdateUIAlpha(currentAlpha);
-        }
-    }
+			if (currentAlpha != targetAlpha)
+			{
+				currentAlpha = Mathf.MoveTowards(currentAlpha, targetAlpha, fadeSpeed * Time.deltaTime);
+				UpdateUIAlpha(currentAlpha);
+			}
+		}
+	}
 
 	private void UpdateUIAlpha(float alpha)
 	{
@@ -147,33 +165,120 @@ public class LLement : PickupableObject
 		}
 	}
 
-	public async void SetElementName(string elementName, ObjectMetadata metadata)
-    {
-        Debug.Log($"[LLement] Setting element name to: {elementName}");
-        ElementName = elementName;
-        
-        if (namePanel != null)
-        {
-            namePanel.SetText(elementName);
-        }
+	public async void SetElementName(string elementName, ObjectMetadata data)
+	{
+		Debug.Log($"[LLement] Setting element name to: {elementName}");
+		ElementName = elementName;
 
-		Sprite emojiSprite = await EmojiConverter.GetEmojiSprite(metadata.emoji);
+		if (namePanel != null)
+		{
+			namePanel.SetText(elementName);
+		}
+
+		Sprite emojiSprite = await EmojiConverter.GetEmojiSprite(data.emoji);
 		if (emojiSprite != null)
 		{
 			if (emojiRenderer != null)
 			{
 				emojiRenderer.gameObject.SetActive(true);
 				emojiRenderer.sprite = emojiSprite;
-				Debug.Log($"[LLement] Set sprite for {elementName}, Renderer active: {emojiRenderer.gameObject.activeInHierarchy}");
 			}
 			else
 			{
 				Debug.LogError($"[LLement] Emoji renderer is null when trying to set sprite for {elementName}");
 			}
 		}
+		metadata = data;
+
 		ApplyMetadataScale();
 		AdjustSpriteToCollider();
-    }
+
+		// Start scale in animation
+		StartScaleIn();
+	}
+
+	private void StartScaleIn()
+	{
+		targetScale = transform.localScale;
+		transform.localScale = Vector3.zero;
+		StartCoroutine(ScaleInAnimation());
+	}
+
+	private IEnumerator ScaleInAnimation()
+	{
+		isScalingIn = true;
+		float elapsed = 0f;
+
+		while (elapsed < scaleInDuration)
+		{
+			elapsed += Time.deltaTime;
+			float progress = scaleInCurve.Evaluate(elapsed / scaleInDuration);
+			transform.localScale = targetScale * progress;
+			yield return null;
+		}
+
+		transform.localScale = targetScale;
+		isScalingIn = false;
+	}
+
+	public void StartScaleOut(bool destroy = true)
+	{
+		if (!isScalingOut)
+		{
+			StartCoroutine(ScaleOutAnimation(destroy));
+		}
+	}
+
+	private IEnumerator ScaleOutAnimation(bool destroy)
+	{
+		isScalingOut = true;
+		float elapsed = 0f;
+		Vector3 startScale = transform.localScale;
+
+		while (elapsed < scaleOutDuration)
+		{
+			elapsed += Time.deltaTime;
+			float progress = scaleOutCurve.Evaluate(elapsed / scaleOutDuration);
+			transform.localScale = startScale * progress;
+			yield return null;
+		}
+
+		isScalingOut = false;
+		if (destroy)
+		{
+			//Destroy(gameObject);
+		}
+	}
+
+	public void StartMergeAnimation(Vector3 mergePoint, System.Action onComplete = null)
+	{
+		StartCoroutine(MergeAnimation(mergePoint, onComplete));
+	}
+
+	private IEnumerator MergeAnimation(Vector3 mergePoint, System.Action onComplete)
+	{
+		isScalingOut = true;
+		float elapsed = 0f;
+		Vector3 startScale = transform.localScale;
+		Vector3 startPosition = transform.position;
+
+		while (elapsed < moveToMergeDuration)
+		{
+			elapsed += Time.deltaTime;
+			float progress = moveToMergeCurve.Evaluate(elapsed / moveToMergeDuration);
+
+			// Move towards merge point
+			transform.position = Vector3.Lerp(startPosition, mergePoint, progress);
+
+			// Scale out simultaneously
+			transform.localScale = startScale * (1 - progress);
+
+			yield return null;
+		}
+
+		isScalingOut = false;
+		onComplete?.Invoke();
+	}
 
 	private void ApplyMetadataScale()
 	{
@@ -240,7 +345,7 @@ public class LLement : PickupableObject
 		canTriggerMerge = true;
 	}
 
-	private void OnCollisionEnter(Collision collision)
+	/*private void OnCollisionEnter(Collision collision)
 	{
 		if (!canTriggerMerge || !hasBeenHeld) return;
 
@@ -256,7 +361,7 @@ public class LLement : PickupableObject
 				GameManager.Instance.MergeElements(this, otherElement);
 			}
 		}
-	}
+	}*/
 
 	private void OnValidate()
 	{
@@ -288,14 +393,6 @@ public class LLement : PickupableObject
 		{
 			ApplyMetadataScale();
 			AdjustSpriteToCollider();
-		}
-	}
-
-	private void OnDestroy()
-	{
-		if (namePanel != null && UIManager.Instance != null)
-		{
-			UIManager.Instance.RemoveWorldPositionedPanel(transform);
 		}
 	}
 }

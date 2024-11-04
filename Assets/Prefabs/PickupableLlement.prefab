@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 644195473072844144}
   - component: {fileID: 7115149022348030580}
   - component: {fileID: 3634783256024613870}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: PickupableLlement
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -126,7 +126,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7978974595191698232}
   - component: {fileID: 6007766595089031494}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: EmojiSprite
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -210,7 +210,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5277186511281531497}
   - component: {fileID: 8025904033683167547}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: HoverSprite
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -294,7 +294,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4413241062635628975}
   - component: {fileID: 6494422027407078975}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: Visuals
   m_TagString: Untagged
   m_Icon: {fileID: 0}

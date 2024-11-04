@@ -38,7 +38,6 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0, g: 0, b: 0, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &4
 LightmapSettings:
@@ -245,6 +244,7 @@ GameObject:
   m_Component:
   - component: {fileID: 250}
   - component: {fileID: 553}
+  - component: {fileID: 554}
   m_Layer: 4
   m_Name: Directional light
   m_TagString: Untagged
@@ -269,6 +269,7 @@ GameObject:
   - component: {fileID: 133}
   - component: {fileID: 580}
   - component: {fileID: 581}
+  - component: {fileID: 582}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -304,6 +305,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 35}
+  serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 2, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
@@ -311,7 +313,6 @@ Transform:
   m_Children:
   - {fileID: 1614805742}
   m_Father: {fileID: 0}
-  m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!4 &213
 Transform:
@@ -320,13 +321,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 89}
+  serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 0.7, y: 0.7, z: 0.7}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 6
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!4 &249
 Transform:
@@ -335,13 +336,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 125}
+  serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!4 &250
 Transform:
@@ -350,13 +351,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 126}
+  serializedVersion: 2
   m_LocalRotation: {x: 0.3971313, y: 0.30997553, z: -0.14454399, w: 0.8516507}
   m_LocalPosition: {x: 0, y: -0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!4 &252
 Transform:
@@ -365,13 +366,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 128}
+  serializedVersion: 2
   m_LocalRotation: {x: 0.48865515, y: 0, z: 0, w: 0.87247705}
   m_LocalPosition: {x: 8.427475, y: 47.39212, z: -38.707382}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 4
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!20 &253
 Camera:
@@ -544,6 +545,29 @@ Light:
   m_UseViewFrustumForShadowCasterCull: 1
   m_ShadowRadius: 0
   m_ShadowAngle: 4.0677967
+--- !u!114 &554
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 126}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Version: 3
+  m_UsePipelineSettings: 1
+  m_AdditionalLightsShadowResolutionTier: 2
+  m_LightLayerMask: 1
+  m_RenderingLayers: 1
+  m_CustomShadowLayers: 0
+  m_ShadowLayerMask: 1
+  m_ShadowRenderingLayers: 1
+  m_LightCookieSize: {x: 1, y: 1}
+  m_LightCookieOffset: {x: 0, y: 0}
+  m_SoftShadowQuality: 0
 --- !u!124 &558
 Behaviour:
   m_ObjectHideFlags: 0
@@ -681,7 +705,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   version: 1073741824
   data:
-    dataString: UEsDBBQAAAgIAAAIIeylBzhG+QIAAI4HAAALACQAZ3JhcGgwLmpzb24KACAAAAAAAAEAGAAAgD7V3rGdAQCAPtXesZ0BAIA+1d6xnQHdVMlyGjEQ/RVK55iCsQlObgnGOAcvZZzyIfggND2MCiFNaTFgl/893RoNjMeufEBOUr1e3+uWXpkreQXse++VKb43weOV3YPwXK+C4pZ96bGtzH2J+ADvOVSHuwDtwVJsj+0Stk/nC529N7xZ47mXRscan7pRCTrJW5sc5vIFEs5dhb3cU4KESGc24K0UP/RKQRPmBNca8vl/QUbq6GjszMr8GnMQDbqztvEKdnxlNOVvfB4jtw+Vhp9WQjBoWRi7meYrmBjnHcIFVw46RP8lSFe2bJTcTgb9s+SZjaJr0ELxTYVTqiVJEcNRkxlvva5s/TElFEYp6Rrd/T4OmU145QKSoUlKjvRiI1l/jEAJclXS/LN2+G1ROPCJhOX7C2lRpzov+2lq8Tbcrev2nrkKVOmkJlDnvP5oPovmwprNVVN2OKASvpRifc/3gjvfErcNXxw7H0aRtlyt+VLBYwn6xsysCTpHo7eBQoOD7KKV6kBtUoJYH/3qXjtgqD6Oc3gc51skv5t7qA48Bv3TI/rbgZsrE9VvGiBTgoYkPFic3i8kFNfHpUqIUpOY4IGv2nuWDJfSOo+m1FBCyfcOJwQ5aAFJ+BNy0NTf0gRLudg0NktqBD8xVkOEE+kKNFd+f4cZfXcFOrZWXx3LJacnl7pLtuYldUIifPQfDDqmO7M9TNvi+rq4083tz1P8zkqzvQZX3gavpIYjGTLcoMATg9+daBRuOmjC5sEWXLTCPOx8sHDBPY/VsB3csLwdilrGCB2UomWOBGJH+IKQw+CJ9C3pm1URZnc1KdL9xmg4nJHBKsj8/SthPPuWZaI4Hy9H56LIvp4Uw+UpZOIbjId0HbBe/fuh4lw12etB4YLpIx2NT6b5E3szy6v4bnPLtzP5sjGt4UtdmLmwAPq2znDgCxaL4CeTT3OJTOfgvdRxNdnrgikj1pAvDokWUdvpzlu+OGZZsEo+G0/Igk3iT7hgBB9eJW7vs4QtFX+XDBROD/IHqWDDq0X8+dnbX1BLAwQUAAAICAAACCHsOfIApWsAAAB4AAAACQAkAG1ldGEuanNvbgoAIAAAAAAAAQAYAACAPtXesZ0BAIA+1d6xnQEAgD7V3rGdAatWKkstKs7Mz1OyUjDRM9azsNBRUEovSizIKAaKGII4pZkpIHa0UqKRpZFRcpqFeZKpRXKakZlummGScapRsmWquSGIaaAUC1RfUlmQ6peYmwrRE5BYkpGWmZeSmZeu516UmeIOMlopthYAUEsBAi0AFAAACAgAAAgh7KUHOEb5AgAAjgcAAAsAJAAAAAAAAAAAAAAAAAAAAGdyYXBoMC5qc29uCgAgAAAAAAABABgAAIA+1d6xnQEAgD7V3rGdAQCAPtXesZ0BUEsBAi0AFAAACAgAAAgh7DnyAKVrAAAAeAAAAAkAJAAAAAAAAAAAAAAARgMAAG1ldGEuanNvbgoAIAAAAAAAAQAYAACAPtXesZ0BAIA+1d6xnQEAgD7V3rGdAVBLBQYAAAAAAgACALgAAAD8AwAAAAA=
+    dataString: UEsDBBQAAAgIAACAn+v5UQa6vgIAAPsFAAALACQAZ3JhcGgwLmpzb24KACAAAAAAAAEAGAAAgD7V3rGdAQCAPtXesZ0BAIA+1d6xnQFlVEtz2jAQ/iuMzoWxnVDS3logpIckTEgnh5KDsNdYg5A8khwgGf57d2X5EXJCfPvt49uHP5hQtoTUabMwIrvXGbCfA0Zv9m3QGe/gyLdarcQ7NJwXkbmCSNxznrgTGvGY3KzegzMi/aW2ksgRgpUSuTb7ebaFqbbOIpxzaQFNRjvyVgh9DNgxOJzC7zv9Ds74SkE5MB0rGQfaMBpdB2Yy9tRKpZLvS8io5M4jHjeR8eWJCuUETjSaUMBUSylsKIe5U+nlTnlpKxSDhExwlOcLSUYTBAoQ28LR3777Y55bcEGE4aeZMNinOi77revm7bnd1eW9cVlRpmEtoI55/9V87c250fu7Jm0cUQpXiHT3xE8pt67X3D486yqPfZMOXO74RsJLAepBL4yuVIZGZypyrSwks16oVtq0gHTX8epaL8Cq/DrOuBvn2Ys/rhyUrY5odNWhfy3YldS++00BZApQTI0Hg9P7g4L8+tiQCVEqEgM8821/z4LhVhjr0BQKCihxlzghyEClEBo/JIKi+ja6MhSLzX2x1I3KTbVR4OEgugTFpTstMaK7XIELW6+uC8stp5ML1QVbc0kXLh7u+FF0YVrqQzttg+tr/U43r3+vNAVb6MM92OKxclIo6MSQ4QEbPNVK1Zvbb2bjtqpMztOem4OjqwzMuOM+G5aDG5b1XbGX3kNVUtIyewG+Irwg1BC9Un8Ljnmlh9myFkV9f9AK2l+vYFuJ7POVMJ78SJI0v5lsxjdpnnwf5vHmCpL0B0xiekbMn5FQ2HEum+j1oHDBVCdH4ck038TBwvDS321m+GEh3ve6N3yhcr1KDYB6rCO0esFgEvzIZPNMoNIVOCeUX032sWZSpzvI1m2gte/t/OgMX3dR1qwUb9oRsmZT/yVcM4Lbq8TtfRNwoOSfgoHE6UH2LCTseUmm6MzO/wFQSwMEFAAACAgAAICf6/fw/HNqAAAAdwAAAAkAJABtZXRhLmpzb24KACAAAAAAAAEAGAAAgD7V3rGdAQCAPtXesZ0BAIA+1d6xnQGrVipLLSrOzM9TslIw1TPSM9FRUEovSizIKAYKGII4pZkpIHa0UqKRpZFRcpqFeZKpRXKakZlummGScapRsmWquSGIaaAUC1RfUlmQ6peYmwrRE5BYkpGWmZeSmZeu516UmeIOMlopthYAUEsBAi0AFAAACAgAAICf6/lRBrq+AgAA+wUAAAsAJAAAAAAAAAAAAAAAAAAAAGdyYXBoMC5qc29uCgAgAAAAAAABABgAAIA+1d6xnQEAgD7V3rGdAQCAPtXesZ0BUEsBAi0AFAAACAgAAICf6/fw/HNqAAAAdwAAAAkAJAAAAAAAAAAAAAAACwMAAG1ldGEuanNvbgoAIAAAAAAAAQAYAACAPtXesZ0BAIA+1d6xnQEAgD7V3rGdAVBLBQYAAAAAAgACALgAAADAAwAAAAA=
     file_cachedStartup: {fileID: 0}
     cacheStartup: 0
   showNavGraphs: 0
@@ -802,6 +826,50 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   page: example_infinite_world
+--- !u!114 &582
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 128}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a79441f348de89743a2939f4d699eac1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_RenderShadows: 1
+  m_RequiresDepthTextureOption: 2
+  m_RequiresOpaqueTextureOption: 2
+  m_CameraType: 0
+  m_Cameras: []
+  m_RendererIndex: -1
+  m_VolumeLayerMask:
+    serializedVersion: 2
+    m_Bits: 1
+  m_VolumeTrigger: {fileID: 0}
+  m_VolumeFrameworkUpdateModeOption: 2
+  m_RenderPostProcessing: 0
+  m_Antialiasing: 0
+  m_AntialiasingQuality: 2
+  m_StopNaN: 0
+  m_Dithering: 0
+  m_ClearDepth: 1
+  m_AllowXRRendering: 1
+  m_AllowHDROutput: 1
+  m_UseScreenCoordOverride: 0
+  m_ScreenSizeOverride: {x: 0, y: 0, z: 0, w: 0}
+  m_ScreenCoordScaleBias: {x: 0, y: 0, z: 0, w: 0}
+  m_RequiresDepthTexture: 0
+  m_RequiresColorTexture: 0
+  m_Version: 2
+  m_TaaSettings:
+    m_Quality: 3
+    m_FrameInfluence: 0.1
+    m_JitterScale: 1
+    m_MipBias: 0
+    m_VarianceClampScale: 0.9
+    m_ContrastAdaptiveSharpening: 0
 --- !u!1 &414891061
 GameObject:
   m_ObjectHideFlags: 0
@@ -836,6 +904,7 @@ Canvas:
   m_OverrideSorting: 0
   m_OverridePixelPerfect: 0
   m_SortingBucketNormalizedSize: 0
+  m_VertexColorAlwaysGammaSpace: 0
   m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 0
@@ -855,7 +924,6 @@ RectTransform:
   m_Children:
   - {fileID: 440069515}
   m_Father: {fileID: 0}
-  m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
@@ -894,7 +962,6 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 414891063}
-  m_RootOrder: -2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 1}
   m_AnchorMax: {x: 0.5, y: 1}
@@ -1101,13 +1168,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 765738561}
+  serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 5
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1614805741
 PrefabInstance:
@@ -1194,3 +1261,14 @@ Animator:
     type: 3}
   m_PrefabInstance: {fileID: 1614805741}
   m_PrefabAsset: {fileID: 0}
+--- !u!1660057539 &9223372036854775807
+SceneRoots:
+  m_ObjectHideFlags: 0
+  m_Roots:
+  - {fileID: 249}
+  - {fileID: 159}
+  - {fileID: 414891063}
+  - {fileID: 250}
+  - {fileID: 252}
+  - {fileID: 765738564}
+  - {fileID: 213}

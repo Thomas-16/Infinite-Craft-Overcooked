@@ -13,6 +13,7 @@ public class SpawnExclusionZone
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
+    public Player Player { get; private set; }
 
     [SerializeField] private GameObject elementPrefab;
 
@@ -44,6 +45,7 @@ public class GameManager : MonoBehaviour
     private void Awake()
     {
         Instance = this;
+        Player = FindObjectOfType<Player>();
     }
 
     private void Start()

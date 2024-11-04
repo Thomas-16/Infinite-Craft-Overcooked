@@ -37,6 +37,28 @@ public class UIManager : MonoBehaviour
 		UpdateWorldPositionedPanels();
 	}
 
+	public UIPanel CreateScreenSpacePanel(UIPanel prefab, Vector2 anchoredPosition)
+	{
+		if (prefab == null)
+		{
+			Debug.LogError("UI Panel prefab not assigned!");
+			return null;
+		}
+
+		// Create panel from prefab
+		UIPanel panel = Instantiate(prefab, mainCanvas.transform);
+
+		// Setup anchors and pivot
+		panel.RectTransform.anchorMin = new Vector2(0.5f, 0.5f);
+		panel.RectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+		panel.RectTransform.pivot = new Vector2(0.5f, 0.5f);
+
+		// Set position directly
+		panel.RectTransform.anchoredPosition = anchoredPosition;
+
+		return panel;
+	}
+
 	public UIPanel CreateWorldPositionedPanel(Transform worldSpaceTarget, UIPanel prefab, Vector3 offset)
 	{
 		if (prefab == null)

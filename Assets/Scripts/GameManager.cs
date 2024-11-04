@@ -52,6 +52,9 @@ public class GameManager : MonoBehaviour
 	private bool isSpawning = false;
 	#endregion
 
+	[Header("Point Bubble Settings")]
+	[SerializeField] private PointBubble pointBubblePrefab;
+
 	#region Public Methods
 	public List<string> GetActiveWords() => new List<string>(activeWords);
 	#endregion
@@ -133,7 +136,6 @@ public class GameManager : MonoBehaviour
 
 		metadata = await ObjectMetadataAPI.Instance.GetObjectMetadata(elementName);
 		metadata.word = elementName;
-		elementDatabase[elementName] = metadata;
 		return metadata;
 	}
 
@@ -159,7 +161,6 @@ public class GameManager : MonoBehaviour
 
 		// Start merge animations
 		ParticleSystem mergeEffect = SpawnMergeEffect(mergePosition);
-		Debug.Log("!!!!!!MERGE EFFECT: " + element1.ElementName + ", " + element2.ElementName);
 
 		// Create a TaskCompletionSource for tracking animation completion
 		var animationComplete = new TaskCompletionSource<bool>();
@@ -185,26 +186,23 @@ public class GameManager : MonoBehaviour
 			OnAnimationComplete();
 		});
 
-		Debug.Log("!!!!!!MERGING START");
 		// Wait for animations to complete
 		await Task.WhenAll(animationComplete.Task);
-		Debug.Log("!!!!!!MERGING complete");
 
 		// Generate new element
 		string newWord = await GenerateNewWord(name1, name2);
 		ObjectMetadata metadata = await GetOrFetchMetadata(newWord);
 
 		// Calculate and award points
-		AwardPoints(newWord, metadata.emoji, name1, name2);
+		AwardPoints(mergePosition, newWord, metadata.emoji, name1, name2);
+		elementDatabase[newWord] = metadata;
 
 		// Create new element after effect duration
 		//await Task.Delay((int)(mergeEffectDuration * 1000));
-		Debug.Log("!!!!!! CreateAndTrackNewElement");
 
 		await CreateAndTrackNewElement(newWord, mergePosition, metadata);
 
 		// Cleanup
-		Debug.Log("!!!!!! CLEANUP");
 		CleanupMergeEffect(mergeEffect);
 	}
 
@@ -465,20 +463,77 @@ public class GameManager : MonoBehaviour
 	{
 		if (scorePanel != null)
 		{
-			scorePanel.SetText($"{playerScore} pts.");
+			scorePanel.SetText($"{playerScore} pts");
 		}
 	}
 
-	private void AwardPoints(string newWord, string newEmoji, string parent1, string parent2)
+	private void AwardPoints(Vector3 mergePosition, string newWord, string newEmoji, string parent1, string parent2)
 	{
 		int points = CalculatePoints(newWord, newEmoji, parent1, parent2);
+		// Create point bubble
+		string reason = GetPointReason(points, newWord, newEmoji, parent1, parent2);
+		CreatePointBubble(mergePosition, points, reason);
+
 		playerScore += points;
 		UpdateScoreDisplay();
+
+		// Add time for successful merge
+		if (points > 0)
+		{
+			TimerManager.Instance.AddTime(points);
+		}
+	}
+
+	private string GetPointReason(int points, string newWord, string newEmoji, string parent1, string parent2)
+	{
+		if (points == 0) return "duplicate";
+
+		List<string> reasons = new List<string>();
+
+		if (!elementDatabase.ContainsKey(newWord))
+			reasons.Add("new word");
+
+		bool differentEmoji = true;
+		if (elementDatabase.ContainsKey(parent1) && elementDatabase[parent1].emoji == newEmoji)
+			differentEmoji = false;
+		if (elementDatabase.ContainsKey(parent2) && elementDatabase[parent2].emoji == newEmoji)
+			differentEmoji = false;
+		if (differentEmoji)
+			reasons.Add("new emoji");
+
+		bool isDistant = true;
+		foreach (var existingWord in discoveredWords)
+		{
+			if (CalculateLevenshteinSimilarity(newWord, existingWord) > similarityThreshold)
+			{
+				isDistant = false;
+				break;
+			}
+		}
+		if (isDistant)
+			reasons.Add("unique");
+
+		return string.Join(", ", reasons);
+	}
+
+	private void CreatePointBubble(Vector3 worldPosition, int points, string reason)
+	{
+		PointBubble bubble = UIManager.Instance.CreateScreenSpacePanel(
+			pointBubblePrefab,
+			Vector2.zero
+		) as PointBubble;
+
+		if (bubble != null)
+		{
+			// Get timer UI reference
+			RectTransform timerRect = TimerManager.Instance.GetTimerRect();
+			bubble.Show(worldPosition, points, reason, timerRect);
+		}
 	}
 
 	private int CalculatePoints(string newWord, string newEmoji, string parent1, string parent2)
 	{
-		int points = 0;
+		int points = 1;
 
 		// New word bonus
 		if (!elementDatabase.ContainsKey(newWord))
@@ -488,7 +543,7 @@ public class GameManager : MonoBehaviour
 		}
 		else
 		{
-			return 0; // Duplicate combination
+			return 1; // Duplicate combination
 		}
 
 		// Different emoji bonus
@@ -587,4 +642,69 @@ public class GameManager : MonoBehaviour
 
 	public float SizeConverter(float sizeFactor) => sizeFactor / 4f;
 	#endregion
+
+
+
+	[SerializeField] private GameOverPanel gameOverPanel;
+
+	// Add to State Management region
+	private bool isGameOver = false;
+
+	// Add new method
+	public void OnGameOver()
+	{
+		if (isGameOver) return;
+		isGameOver = true;
+
+		// Stop spawning and timer
+		StopAllCoroutines();
+		TimerManager.Instance.PauseTimer();
+
+		StartCoroutine(gameOverPanel.FadeIn());
+	}
+
+	public void RestartGame()
+	{
+		// Reset player
+		if (playerTransform != null)
+		{
+			// Get the player component
+			Player player = playerTransform.GetComponent<Player>();
+			if (player != null)
+			{
+				// Drop any held object
+				player.DropCurrentObject();
+
+				// Reset position and rotation
+				playerTransform.position = Vector3.zero;
+				playerTransform.rotation = Quaternion.identity;
+			}
+		}
+
+		// Clear existing elements
+		foreach (var element in activeElements)
+		{
+			if (element != null)
+				Destroy(element.gameObject);
+		}
+
+		// Reset state
+		activeElements.Clear();
+		activeWords.Clear();
+		discoveredWords.Clear();
+		allUsedWords.Clear();
+		elementDatabase.Clear();
+		isGameOver = false;
+		playerScore = 0;
+		UpdateScoreDisplay();
+
+		// Restart timer
+		TimerManager.Instance.ResetTimer();
+
+		// Start game systems
+		StartCoroutine(InitializeAndSpawn());
+		StartCoroutine(MonitorObjectCount());
+		StartCoroutine(gameOverPanel.FadeOut());
+
+	}
 }

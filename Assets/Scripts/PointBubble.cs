@@ -1,4 +1,3 @@
-// PointBubble.cs
 using UnityEngine;
 using TMPro;
 using DG.Tweening;
@@ -16,6 +15,7 @@ public class PointBubble : UIPanel
 	[SerializeField] private float floatDuration = 1f;
 	[SerializeField] private float fadeOutDuration = 0.3f;
 	[SerializeField] private float bounceStrength = 1.2f;
+	[SerializeField] private float floatDistance = 2f; // World space units to float upward
 
 	[Header("Color Settings")]
 	[SerializeField] private Color zeroPointsColor = Color.gray;
@@ -23,22 +23,36 @@ public class PointBubble : UIPanel
 	[SerializeField] private Color twoPointsColor = Color.yellow;
 	[SerializeField] private Color threePointsColor = Color.green;
 
+	private Vector3 _worldPosition;
+	private RectTransform _targetUI;
+
 	private void Awake()
 	{
+		RectTransform = GetComponent<RectTransform>();
+
 		if (canvasGroup == null)
 			canvasGroup = GetComponent<CanvasGroup>();
 	}
 
+	private void LateUpdate()
+	{
+		if (_worldPosition != Vector3.zero)
+		{
+			// Update UI position every frame based on world position
+			Vector3 screenPos = Camera.main.WorldToScreenPoint(_worldPosition);
+			transform.position = screenPos;
+		}
+	}
+
 	public void Show(Vector3 worldPosition, int points, string reason, RectTransform targetUI)
 	{
+		_worldPosition = worldPosition;
+		_targetUI = targetUI;
+
 		// Set text and color
 		pointsText.text = $"+{points}s";
 		reasonText.text = reason;
 		pointsText.color = GetColorForPoints(points);
-
-		// Convert world position to screen position
-		Vector3 screenPos = Camera.main.WorldToScreenPoint(worldPosition);
-		transform.position = screenPos;
 
 		// Initial setup
 		transform.localScale = Vector3.zero;
@@ -52,12 +66,18 @@ public class PointBubble : UIPanel
 			.SetEase(Ease.OutBack, bounceStrength));
 		sequence.Join(canvasGroup.DOFade(1f, popInDuration * 0.5f));
 
-		// Small float up
-		sequence.Append(transform.DOMoveY(transform.position.y + 50f, floatDuration)
+		// Float up in world space
+		sequence.Append(DOTween.To(() => _worldPosition,
+			x => _worldPosition = x,
+			_worldPosition + Vector3.up * floatDistance,
+			floatDuration)
 			.SetEase(Ease.OutQuad));
 
-		// Move to timer
-		sequence.Append(transform.DOMove(targetUI.position, floatDuration)
+		// Final move to target UI
+		sequence.AppendCallback(() => {
+			_worldPosition = Vector3.zero; // Stop world position tracking
+		});
+		sequence.Append(transform.DOMove(_targetUI.position, floatDuration)
 			.SetEase(Ease.InOutQuad));
 
 		// Fade out

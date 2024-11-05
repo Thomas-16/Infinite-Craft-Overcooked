@@ -6,16 +6,16 @@ using UnityEngine.UI;
 public class UIPanel : MonoBehaviour
 {
 	[Header("References")]
-	[SerializeField] private Image backgroundPanel;
-	[SerializeField] private TextMeshProUGUI textDisplay;
+	[SerializeField] protected Image backgroundPanel;
+	[SerializeField] protected TextMeshProUGUI textDisplay;
 
 	[Header("Layout Settings")]
-	[SerializeField] private float horizontalPadding = 10f;
-	[SerializeField] private float verticalPadding = 10f;
-	[SerializeField] private float minWidth = 60f;
-	[SerializeField] private float minHeight = 30f;
+	[SerializeField] protected float horizontalPadding = 10f;
+	[SerializeField] protected float verticalPadding = 10f;
+	[SerializeField] protected float minWidth = 60f;
+	[SerializeField] protected float minHeight = 30f;
 
-	public RectTransform RectTransform { get; private set; }
+	public RectTransform RectTransform { get; set; }
 	private RectTransform textRectTransform;
 
 	private void Awake()
@@ -52,7 +52,7 @@ public class UIPanel : MonoBehaviour
 		}
 	}
 
-	public void UpdatePanelSize()
+	public virtual void UpdatePanelSize()
 	{
 		if (textDisplay == null || backgroundPanel == null || textRectTransform == null) return;
 

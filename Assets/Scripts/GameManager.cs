@@ -62,11 +62,20 @@ public class GameManager : MonoBehaviour
 	#region Initialization
 	private void Awake() => Instance = this;
 
+	[Header("Tutorial")]
+	[SerializeField] private TutorialPanel tutorialPanelPrefab;
+
 	private void Start()
 	{
 		InitializePlayerTransform();
 		StartCoroutine(InitializeAndSpawn());
 		StartCoroutine(MonitorObjectCount());
+
+		// Create tutorial panel
+		if (tutorialPanelPrefab != null)
+		{
+			UIManager.Instance.CreateScreenSpacePanel(tutorialPanelPrefab, Vector2.zero);
+		}
 	}
 
 	private void InitializePlayerTransform()

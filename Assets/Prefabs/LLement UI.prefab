@@ -93,8 +93,8 @@ MonoBehaviour:
   textDisplay: {fileID: 7200697152061190806}
   horizontalPadding: 3
   verticalPadding: 2
-  minWidth: 60
-  minHeight: 30
+  minWidth: 40
+  minHeight: 20
 --- !u!1 &4591203635795276660
 GameObject:
   m_ObjectHideFlags: 0

@@ -17,6 +17,12 @@ public class GameManager : MonoBehaviour
 
 	[SerializeField] private GameObject elementPrefab;
 
+	[Header("Player Settings")]
+	[SerializeField] private Transform playerRespawnPoint;
+	[SerializeField] private GameObject player;
+	[Tooltip("Optional particle effect to play when player respawns")]
+	[SerializeField] private ParticleSystem respawnEffectPrefab;
+
 	[Header("Spawn Settings")]
 	[SerializeField] private List<SpawnZone> spawnZones = new List<SpawnZone>();
 	[SerializeField] private int totalItemsToSpawn = 30;
@@ -36,6 +42,7 @@ public class GameManager : MonoBehaviour
 	public List<string> GetActiveWords() => new List<string>(activeWords);
 	private bool isReplenishing = false;
 
+
 	private void Awake()
 	{
 		Instance = this;
@@ -45,6 +52,63 @@ public class GameManager : MonoBehaviour
 	{
 		StartCoroutine(InitializeAndSpawn());
 		StartCoroutine(MonitorWordCount());
+
+		// Validate player and respawn point references
+		if (player == null)
+		{
+			player = GameObject.FindGameObjectWithTag("Player");
+			if (player == null)
+			{
+				Debug.LogWarning("No player object assigned or found with 'Player' tag!");
+			}
+		}
+
+		if (playerRespawnPoint == null)
+		{
+			Debug.LogWarning("No respawn point assigned! Player will respawn at origin.");
+		}
+	}
+
+	private void Update()
+	{
+		// Handle respawn input
+		if (Input.GetKeyDown(KeyCode.R))
+		{
+			RespawnPlayer();
+		}
+	}
+
+	public void RespawnPlayer()
+	{
+		if (player == null) return;
+
+		// Get respawn position
+		Vector3 respawnPosition = playerRespawnPoint != null ?
+			playerRespawnPoint.position : Vector3.zero;
+
+		// Reset player position and rotation
+		player.transform.position = respawnPosition;
+		player.transform.rotation = playerRespawnPoint != null ?
+			playerRespawnPoint.rotation : Quaternion.identity;
+
+		// Spawn respawn effect if available
+		if (respawnEffectPrefab != null)
+		{
+			ParticleSystem effect = Instantiate(respawnEffectPrefab,
+				respawnPosition, Quaternion.identity);
+			Destroy(effect.gameObject,
+				effect.main.duration + effect.main.startLifetime.constantMax);
+		}
+
+		// Optional: Reset player velocity if it has a Rigidbody
+		Rigidbody rb = player.GetComponent<Rigidbody>();
+		if (rb != null)
+		{
+			rb.velocity = Vector3.zero;
+			rb.angularVelocity = Vector3.zero;
+		}
+
+		Debug.Log("Player respawned at: " + respawnPosition);
 	}
 
 	private async void GenerateInitialWords()

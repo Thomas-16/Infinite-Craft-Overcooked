@@ -49,6 +49,13 @@ public class Player : MonoBehaviour
 	[SerializeField] private UIPanel throwPowerBarPrefab;
 	[SerializeField] private float throwBarOffset = 1.75f;
 
+	[Header("Death Zone Settings")]
+	[SerializeField] private ParticleSystem deathEffectPrefab;
+	[SerializeField] private float deathEffectDuration = 1f;
+	[SerializeField] private AudioClip deathSound;
+	private bool isDead = false;
+	private AudioSource audioSource;
+
 	private PickupableObject hoveringObject;
 	private PickupableObject pickedupObject;
 	private bool isHoldingObject;
@@ -85,6 +92,7 @@ public class Player : MonoBehaviour
 	{
 		_character = GetComponent<Character>();
 		mainCamera = Camera.main;
+		audioSource = gameObject.AddComponent<AudioSource>();
 
 		coneCastHelper = new ConeCastHelper();
 		coneCastHelper.InitializeConeCast(rayCastAngle, numRaycastRays);
@@ -111,6 +119,74 @@ public class Player : MonoBehaviour
 
 		defaultWalkSpeed = _character.maxWalkSpeed;
 		currentSprintResource = maxSprintResource;
+	}
+
+	public void OnHitDeathZone()
+	{
+		if (isDead) return; // Prevent multiple death triggers
+		isDead = true;
+
+		// Drop held object if any
+		if (isHoldingObject && pickedupObject != null)
+		{
+			isHoldingObject = false;
+			pickedupObject.Drop(this);
+			pickedupObject = null;
+		}
+
+		// Play death effect if assigned
+		if (deathEffectPrefab != null)
+		{
+			ParticleSystem effect = Instantiate(deathEffectPrefab, transform.position, Quaternion.identity);
+			Destroy(effect.gameObject, deathEffectDuration);
+		}
+
+		// Play death sound if assigned
+		if (deathSound != null && audioSource != null)
+		{
+			audioSource.PlayOneShot(deathSound);
+		}
+
+		// Trigger respawn via GameManager
+		StartCoroutine(DeathSequence());
+	}
+
+	private IEnumerator DeathSequence()
+	{
+		// Disable player controls
+		enabled = false;
+		if (_character != null)
+		{
+			_character.enabled = false;
+		}
+
+		// Optional: Make player invisible
+		Renderer[] renderers = GetComponentsInChildren<Renderer>();
+		foreach (Renderer renderer in renderers)
+		{
+			renderer.enabled = false;
+		}
+
+		// Wait for effects to play
+		yield return new WaitForSeconds(deathEffectDuration);
+
+		// Respawn player
+		GameManager.Instance.RespawnPlayer();
+
+		// Re-enable player
+		enabled = true;
+		if (_character != null)
+		{
+			_character.enabled = true;
+		}
+
+		// Make player visible again
+		foreach (Renderer renderer in renderers)
+		{
+			renderer.enabled = true;
+		}
+
+		isDead = false;
 	}
 
 	private void SetupThrowUI()

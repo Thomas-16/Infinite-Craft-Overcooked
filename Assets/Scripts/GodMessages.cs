@@ -87,7 +87,7 @@ public class GodMessages : MonoBehaviour
 
 	private async Task InitializeGodPersonality()
 	{
-		string prompt = "You are an ancient god with very specific preferences for offerings. " +
+		string prompt = "You are the ancient Greek god Zeus, King of the Olympians and the god of lightning. You are seeking very specific offerings. " +
 					   "Describe your preferences for earthly objects in 2-3 sentences. " +
 					   "Keep the sentences short. Include a line break after every phrase. " +
 					   "Include specific characteristics you love and hate. Be creative but consistent. " +
@@ -101,8 +101,9 @@ public class GodMessages : MonoBehaviour
 			isInitialized = true;
 
 			QueueMessage("*A divine presence materializes*", defaultTextColor, initialMessageColor);
-			await Task.Delay(2000);
+			await Task.Delay(4000);
 			QueueMessage(godPreferences, defaultTextColor, initialMessageColor);
+			await Task.Delay(4000);
 
 			// After the god declares their preferences, create the goal panel
 			await CreateGoalPanel();

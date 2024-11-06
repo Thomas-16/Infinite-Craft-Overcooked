@@ -9,5 +9,11 @@ public class DeathZone : MonoBehaviour
 		{
 			player.OnHitDeathZone();
 		}
+
+		LLement element = other.GetComponent<LLement>();
+		if (element != null)
+		{
+			Destroy(element);
+		}
 	}
 }

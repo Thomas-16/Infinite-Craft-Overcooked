@@ -33,7 +33,7 @@ public class GameManager : MonoBehaviour
 	[SerializeField] private float mergeEffectScale = 1f;
 
 	[Header("Word Generation Settings")]
-	[SerializeField] private int minWordsBeforeReplenish = 10;
+	[SerializeField] private int minWordsBeforeReplenish = 20;
 	[SerializeField] private float minReplenishDelay = 3f;
 	[SerializeField] private float maxReplenishDelay = 8f;
 
@@ -113,7 +113,7 @@ public class GameManager : MonoBehaviour
 
 	private async void GenerateInitialWords()
 	{
-		string prompt = "Generate a list of exactly 30 random nouns. Include everyday objects, pop culture items, and general concepts. " +
+		string prompt = "Generate a list of exactly 30 random items. Include everyday objects, pop culture items, or interesting things from history. " +
 					   "Each word MUST be unique. Separate words with commas. " +
 					   "Keep words relatively simple and recognizable. " +
 					   "Include some fun items like 'lightsaber' or 'pokeball' but keep most items realistic. " +
@@ -370,8 +370,8 @@ public class GameManager : MonoBehaviour
 		llement2.gameObject.SetActive(false);
 
 		string response = await ChatGPTClient.Instance.SendChatRequest(
-			"What object or concept comes to mind when I combine " + name1 + " with " + name2 +
-			"? Say ONLY one simple word that represents an object or concept. Keep it simple, creative and engaging for a game where players combine elements. Do not make up words."
+			"What object or item comes to mind when I combine " + name1 + " with " + name2 +
+			"? Say ONLY one simple word that represents an object or item. Keep it simple, creative and engaging for a game where players combine elements. Do not make up words."
 		);
 		response = response.Replace(".", "").Trim().ToLower();
 

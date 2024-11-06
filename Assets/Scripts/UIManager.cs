@@ -56,7 +56,6 @@ public class UIManager : MonoBehaviour
 		// Add to tracking dictionary with offset
 		worldToUIPanels[worldSpaceTarget] = (panel, offset);
 
-		Debug.Log("!!!! panel created: " + panel.name);
 		return panel;
 	}
 

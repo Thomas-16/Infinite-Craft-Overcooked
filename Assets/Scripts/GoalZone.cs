@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using DG.Tweening;
 
 public class GoalZone : MonoBehaviour
 {
@@ -16,15 +17,45 @@ public class GoalZone : MonoBehaviour
 	[Header("UI Settings")]
 	[SerializeField] private UIPanel progressUIPrefab;
 
+	[Header("Visual Feedback")]
+	[SerializeField] private MeshRenderer cubeMeshRenderer;
+	[SerializeField] private Color successColor = new Color(0, 1, 0, 0.5f); // Semi-transparent green
+	[SerializeField] private Color rejectColor = new Color(1, 0, 0, 0.5f);  // Semi-transparent red
+	[SerializeField] private float colorTransitionDuration = 0.3f;
+
+
 	private int acceptedItems = 0;
 	private bool isProcessing = false;
 	private HashSet<LLement> processedElements = new HashSet<LLement>();
 	private UIPanel progressPanel;
+	private Material cubeMaterial;
+	private Color originalColor;
+	private Sequence currentColorSequence;
 
 	private void Start()
 	{
 		SetupZone();
 		UpdateProgressUI();
+	}
+
+	private void AnimateCubeColor(Color targetColor)
+	{
+		if (cubeMaterial == null) return;
+
+		// Kill any ongoing color animation
+		if (currentColorSequence != null)
+		{
+			currentColorSequence.Kill();
+		}
+
+		// Create new color transition sequence
+		currentColorSequence = DOTween.Sequence();
+
+		// Transition to target color and back
+		currentColorSequence.Append(DOTween.To(() => cubeMaterial.color, x => cubeMaterial.color = x, targetColor, colorTransitionDuration)
+			.SetEase(Ease.OutQuad));
+		currentColorSequence.Append(DOTween.To(() => cubeMaterial.color, x => cubeMaterial.color = x, originalColor, colorTransitionDuration)
+			.SetEase(Ease.InQuad));
 	}
 
 	private void SetupZone()
@@ -48,6 +79,18 @@ public class GoalZone : MonoBehaviour
 			progressPanel.SetText($"Offerings: 0/{requiredItems}");
 			progressPanel.SetPanelColor(new Color(0, 0, 0, 0.7f));
 			progressPanel.SetTextColor(Color.white);
+		}
+
+		if (cubeMeshRenderer != null)
+		{
+			// Create a material instance to avoid affecting other objects using the same material
+			cubeMaterial = new Material(cubeMeshRenderer.material);
+			cubeMeshRenderer.material = cubeMaterial;
+			originalColor = cubeMaterial.color;
+		}
+		else
+		{
+			Debug.LogError("No MeshRenderer found for color feedback!");
 		}
 	}
 
@@ -86,6 +129,7 @@ public class GoalZone : MonoBehaviour
 	{
 		acceptedItems++;
 		UpdateProgressUI();
+		AnimateCubeColor(successColor);
 
 		if (acceptEffect != null)
 		{
@@ -103,6 +147,8 @@ public class GoalZone : MonoBehaviour
 
 	private void HandleRejectedElement(LLement element)
 	{
+		AnimateCubeColor(rejectColor);
+
 		if (rejectEffect != null)
 		{
 			ParticleSystem effect = Instantiate(rejectEffect, element.transform.position, Quaternion.identity);

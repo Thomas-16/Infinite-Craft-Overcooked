@@ -63,8 +63,8 @@ public class LightningSystem : MonoBehaviour
 		Vector3 boltStartPosition = targetPosition + Vector3.up * lightningHeight;
 		GameObject lightningBolt = Instantiate(lightningBoltPrefab, boltStartPosition, Quaternion.identity);
 		lightningBolt.transform.LookAt(targetPosition);
-		lightningBolt.transform.rotation = Quaternion.LookRotation((targetPosition - boltStartPosition).normalized) *
-										 Quaternion.Euler(90f, 0f, 0f); // Adjust based on your bolt effect's orientation
+		lightningBolt.transform.rotation = Quaternion.identity;//Quaternion.LookRotation((targetPosition - boltStartPosition).normalized) *
+										 //Quaternion.Euler(90f, 0f, 0f); // Adjust based on your bolt effect's orientation
 
 		// Play lightning sound
 		if (lightningSound != null)
@@ -73,10 +73,10 @@ public class LightningSystem : MonoBehaviour
 		}
 
 		// Wait for bolt duration
-		yield return new WaitForSeconds(boltDuration);
+		yield return new WaitForSeconds(0.1f);
 
 		// Destroy bolt effect
-		Destroy(lightningBolt);
+		Destroy(lightningBolt, destroyDelay);
 
 		// Spawn explosion effect
 		GameObject explosion = Instantiate(explosionEffectPrefab, targetPosition, Quaternion.identity);
@@ -94,6 +94,7 @@ public class LightningSystem : MonoBehaviour
 
 		foreach (Collider hit in colliders)
 		{
+			Debug.Log("collider hit: " + hit.gameObject.name);
 			Rigidbody rb = hit.GetComponent<Rigidbody>();
 			if (rb != null)
 			{
@@ -105,7 +106,7 @@ public class LightningSystem : MonoBehaviour
 	private void DestroyLLements(Vector3 centerPoint)
 	{
 		// Find all colliders in explosion radius
-		Collider[] colliders = Physics.OverlapSphere(centerPoint, explosionRadius);
+		Collider[] colliders = Physics.OverlapSphere(centerPoint, explosionRadius/4f);
 
 		foreach (Collider hit in colliders)
 		{

@@ -20,6 +20,7 @@ public class LightningSystem : MonoBehaviour
 	[SerializeField] private float explosionForce = 1000f;
 	[SerializeField] private float upwardsModifier = 3f;
 	[SerializeField] private float destroyDelay = 3f;
+	[SerializeField] private GameObject lightSource;
 
 	private Camera mainCamera;
 	private AudioSource audioSource;
@@ -71,7 +72,7 @@ public class LightningSystem : MonoBehaviour
 		{
 			audioSource.PlayOneShot(lightningSound);
 		}
-
+		lightSource.SetActive(false);
 		// Wait for bolt duration
 		yield return new WaitForSeconds(0.1f);
 
@@ -85,6 +86,10 @@ public class LightningSystem : MonoBehaviour
 		// Handle physics and destruction
 		ApplyExplosionForce(targetPosition);
 		DestroyLLements(targetPosition);
+
+		yield return new WaitForSeconds(0.1f);
+		lightSource.SetActive(true);
+
 	}
 
 	private void ApplyExplosionForce(Vector3 explosionPoint)
@@ -95,6 +100,7 @@ public class LightningSystem : MonoBehaviour
 		foreach (Collider hit in colliders)
 		{
 			Debug.Log("collider hit: " + hit.gameObject.name);
+
 			Rigidbody rb = hit.GetComponent<Rigidbody>();
 			if (rb != null)
 			{
@@ -106,7 +112,7 @@ public class LightningSystem : MonoBehaviour
 	private void DestroyLLements(Vector3 centerPoint)
 	{
 		// Find all colliders in explosion radius
-		Collider[] colliders = Physics.OverlapSphere(centerPoint, explosionRadius/4f);
+		Collider[] colliders = Physics.OverlapSphere(centerPoint, explosionRadius/6f);
 
 		foreach (Collider hit in colliders)
 		{

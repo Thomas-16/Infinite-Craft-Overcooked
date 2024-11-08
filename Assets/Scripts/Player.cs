@@ -267,6 +267,8 @@ public class Player : MonoBehaviour
         {
             UpdateThrowCharge();
         }
+
+		transform.localEulerAngles = new Vector3(0f, transform.localEulerAngles.y, 0f);
     }
 
 	private void HandleSprintResource()

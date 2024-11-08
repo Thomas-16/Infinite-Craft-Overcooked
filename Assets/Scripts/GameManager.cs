@@ -43,6 +43,26 @@ public class GameManager : MonoBehaviour
 	private bool isReplenishing = false;
 
 
+	[Header("Lightning Settings")]
+	[SerializeField] private float minTimeBetweenStrikes = 3f;
+	[SerializeField] private float maxTimeBetweenStrikes = 8f;
+	[SerializeField] private float lightningChance = 0.7f; // Chance that the timer will actually trigger a strike
+	[SerializeField] private int maxSimultaneousStrikes = 3; // Maximum number of simultaneous lightning strikes
+	[SerializeField] private bool enableRandomLightning = true;
+	//[SerializeField] private float safeZoneRadius = 5f; // Won't strike near player
+	[SerializeField] private float lightningPlayerRange = 8f; // Range around player where lightning can strike
+	[SerializeField] private float minDistanceFromPlayer = 0f; // Minimum distance from player to prevent too-close strikes
+
+	private float nextLightningTime;
+	private bool isLightningCoroutineRunning = false;
+	[SerializeField] private HashSet<LLement> activeElements = new HashSet<LLement>();
+
+	[Header("Continuous Spawn Settings")]
+	[SerializeField] private float minSpawnDelay = 1f;
+	[SerializeField] private float maxSpawnDelay = 3f;
+	[SerializeField] private int spawnBatchSize = 3; // How many items to spawn at once when below threshold
+	private bool isSpawningElements = false;
+
 	private void Awake()
 	{
 		Instance = this;
@@ -67,6 +87,125 @@ public class GameManager : MonoBehaviour
 		{
 			Debug.LogWarning("No respawn point assigned! Player will respawn at origin.");
 		}
+
+		InitializeLightning();
+
+	}
+	private IEnumerator MonitorElementCount()
+	{
+		while (true)
+		{
+			CleanupDestroyedElements(); // Remove null references
+
+			int currentElementCount = activeElements.Count;
+			if (currentElementCount < totalItemsToSpawn && !isSpawningElements)
+			{
+				StartCoroutine(SpawnElementsBatch());
+			}
+
+			yield return new WaitForSeconds(1f); // Check interval
+		}
+	}
+
+	private IEnumerator SpawnElementsBatch()
+	{
+		isSpawningElements = true;
+
+		int elementsNeeded = totalItemsToSpawn - activeElements.Count;
+		int batchesToSpawn = Mathf.Min(spawnBatchSize, elementsNeeded);
+
+		for (int i = 0; i < batchesToSpawn; i++)
+		{
+			Vector3? spawnPosition = GetRandomSpawnPosition();
+
+			if (spawnPosition.HasValue && activeWords.Count > 0)
+			{
+				string randomWord = activeWords[Random.Range(0, activeWords.Count)];
+				SpawnElement(randomWord, spawnPosition.Value);
+
+				// Random delay between individual spawns
+				float spawnDelay = Random.Range(minSpawnDelay, maxSpawnDelay);
+				yield return new WaitForSeconds(spawnDelay);
+			}
+		}
+
+		isSpawningElements = false;
+	}
+
+	private void InitializeLightning()
+	{
+		Debug.Log("====== InitializeLightning");
+
+		nextLightningTime = Random.Range(minTimeBetweenStrikes, maxTimeBetweenStrikes);
+		if (!isLightningCoroutineRunning && enableRandomLightning)
+		{
+			Debug.Log("====== isLightningCoroutineRunning");
+
+			StartCoroutine(LightningStrikeCoroutine());
+		}
+	}
+
+	private IEnumerator LightningStrikeCoroutine()
+	{
+		Debug.Log("====== LightningStrikeCoroutine");
+		isLightningCoroutineRunning = true;
+
+		float interval = 0f;
+		while (enableRandomLightning)
+		{
+			Debug.Log("====== nextLightningTime: " + nextLightningTime + ", interval: " + interval);
+
+			if (interval >= nextLightningTime)// && Random.value <= lightningChance)
+			{
+				Debug.Log("====== enableRandomLightning");
+				interval = 0f;
+				StrikeRandomElement();
+				nextLightningTime = Random.Range(minTimeBetweenStrikes, maxTimeBetweenStrikes);
+			}
+			interval += Time.deltaTime;
+			//nextLightningTime = Time.time + Random.Range(minTimeBetweenStrikes, maxTimeBetweenStrikes);
+			yield return null; // Check interval
+		}
+
+		isLightningCoroutineRunning = false;
+	}
+
+	private void StrikeRandomElement()
+	{
+		if (activeElements.Count == 0 || player == null) return;
+		Debug.Log("====== StrikeRandomElement");
+
+		// Get player position
+		Vector3 playerPos = player.transform.position;
+
+		// Find all elements within range of player
+		List<LLement> elementsInRange = new List<LLement>();
+		foreach (LLement element in activeElements)
+		{
+			if (element != null)
+			{
+				float distanceToPlayer = Vector3.Distance(element.transform.position, playerPos);
+				if (distanceToPlayer <= lightningPlayerRange && distanceToPlayer >= minDistanceFromPlayer)
+				{
+					elementsInRange.Add(element);
+				}
+			}
+		}
+
+		// If we found any valid targets, strike one randomly
+		if (elementsInRange.Count > 0)
+		{
+			LLement targetElement = elementsInRange[Random.Range(0, elementsInRange.Count)];
+			if (targetElement != null)
+			{
+				LightningSystem.Instance.SpawnLightning(targetElement.transform.position);
+			}
+		}
+	}
+
+	private void CleanupDestroyedElements()
+	{
+		activeElements.RemoveWhere(element => element == null || !element.gameObject.activeInHierarchy);
 	}
 
 	private void Update()
@@ -293,21 +432,24 @@ public class GameManager : MonoBehaviour
 			yield return new WaitForSeconds(0.1f);
 		}
 
-		// Start spawning once we have words
+		// Initial spawn
 		StartCoroutine(SpawnInitialResources());
+
+		// Start monitoring element count
+		StartCoroutine(MonitorElementCount());
 	}
 
 	private IEnumerator SpawnInitialResources()
 	{
 		int attempts = 0;
-		int maxAttempts = totalItemsToSpawn * 10; // Prevent infinite loops
+		int maxAttempts = totalItemsToSpawn * 2; // Reduced from 10 since we have continuous spawning now
 		int itemsSpawned = 0;
 
 		while (itemsSpawned < totalItemsToSpawn && attempts < maxAttempts)
 		{
 			Vector3? spawnPosition = GetRandomSpawnPosition();
 
-			if (spawnPosition.HasValue)
+			if (spawnPosition.HasValue && activeWords.Count > 0)
 			{
 				string randomWord = activeWords[Random.Range(0, activeWords.Count)];
 				SpawnElement(randomWord, spawnPosition.Value);
@@ -320,7 +462,7 @@ public class GameManager : MonoBehaviour
 
 		if (attempts >= maxAttempts)
 		{
-			Debug.LogWarning("Reached maximum spawn attempts - some items may not have been spawned.");
+			Debug.LogWarning("Reached maximum spawn attempts during initial spawn - continuing with continuous spawning.");
 		}
 	}
 
@@ -341,12 +483,15 @@ public class GameManager : MonoBehaviour
 		isReplenishing = false;
 	}
 
-	public void SpawnElement(string name, Vector3 pos)
+	public LLement SpawnElement(string name, Vector3 pos)
 	{
 		GameObject newObj = Instantiate(elementPrefab, pos, Quaternion.identity);
 		LLement newElement = newObj.GetComponent<LLement>();
 		newElement.SetElementName(name);
+		activeElements.Add(newElement);
+		return newElement;
 	}
+
 
 	public float SizeConverter(float sizeFactor)
 	{
@@ -361,6 +506,9 @@ public class GameManager : MonoBehaviour
 		// Remove the words from active list
 		activeWords.Remove(name1.ToLower());
 		activeWords.Remove(name2.ToLower());
+
+		activeElements.Remove(llement1);
+		activeElements.Remove(llement2);
 
 		Vector3 mergePosition = FindMidpoint(llement1.transform.position, llement2.transform.position) + (Vector3.up * 0.5f);
 
@@ -385,7 +533,8 @@ public class GameManager : MonoBehaviour
 			allUsedWords.Add(response);
 			activeWords.Add(response);
 		}
-		SpawnElement(response, mergePosition);
+		LLement newElement = SpawnElement(response, mergePosition);
+		activeElements.Add(newElement);
 
 		if (mergeEffect != null)
 		{

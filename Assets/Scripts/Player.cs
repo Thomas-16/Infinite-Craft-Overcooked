@@ -49,7 +49,6 @@ public class Player : MonoBehaviour
 	[SerializeField] private UIPanel throwPowerBarPrefab;
 	[SerializeField] private float throwBarOffset = 1.75f;
 
-	private PickupableObject hoveringObject;
 	private float pickupInputStartTime;
 	private bool pickupInputActive = false;
 
@@ -177,7 +176,7 @@ public class Player : MonoBehaviour
     protected virtual void Update()
     {
         HandleMovement();
-        HandleHoverObjects();
+        HandlePickupObjects();
         HandlePickupInput();
 		HandleSprintResource();
 		HandleThrowInput();
@@ -364,15 +363,8 @@ public class Player : MonoBehaviour
         }
     }
 
-	private void HandleHoverObjects()
+	private void HandlePickupObjects()
     {
-        // Clear previous hover if we had one and didn't find it in this frame
-        if (hoveringObject != null)
-        {
-            hoveringObject.ClearHover();
-            hoveringObject = null;
-        }
-
         RaycastHit[] raycastHits = coneCastHelper.ConeCast(lookingRaycastPositionTransform.position, transform.forward, raycastDistance);
         if (debugVisualizeRays)
         {
@@ -388,7 +380,10 @@ public class Player : MonoBehaviour
             if (pickupableObject != null && !pickupableObject.IsPickedUp)
             {
                 pickupableObject.HoverOver(this);
-                hoveringObject = pickupableObject;
+
+				if(pickupableObject.CanBePickedup()) {
+                    playerInventorySystem.AddItem(pickupableObject);
+                }
                 return;
             }
         }
@@ -421,14 +416,7 @@ public class Player : MonoBehaviour
                 }
                 else if (Time.time - pickupInputStartTime < 0.2f)
                 {
-                    // Quick tap - toggle pickup/drop
-                    if (!playerInventorySystem.IsInventoryFull() && hoveringObject != null)
-                    {
-                        // Pickup
-
-						playerInventorySystem.AddItem(hoveringObject);
-                    }
-                    else if (playerInventorySystem.GetCurrentHoldingItem() != null)
+                    if (playerInventorySystem.GetCurrentHoldingItem() != null)
                     {
                         // Drop
 

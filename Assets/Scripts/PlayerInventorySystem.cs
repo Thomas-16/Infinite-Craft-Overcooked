@@ -90,6 +90,7 @@ public class PlayerInventorySystem : MonoBehaviour
             if (hotbarItems[selectedIndex] is LLement) {
                 ((LLement)hotbarItems[selectedIndex]).UIPanelSetActive(false);
             }
+            hotbarItems[selectedIndex].SetPickupTimer(4f);
             hotbarItems[selectedIndex] = null;
 
             Debug.Log("dropping not from stack");
@@ -99,6 +100,7 @@ public class PlayerInventorySystem : MonoBehaviour
 
             dupedItem.PickedupByPlayer = player;
             dupedItem.Drop(player);
+            dupedItem.SetPickupTimer(4f);
             hotbarItemsUI[selectedIndex].RemoveItemFromStack();
 
             if (dupedItem is LLement) {

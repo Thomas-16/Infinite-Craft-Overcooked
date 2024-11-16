@@ -14,6 +14,8 @@ public class PickupableObject : MonoBehaviour
     [SerializeField] private GameObject hoverVisual;
     [SerializeField] protected Collider[] mainColliders;
 
+    private float pickupThresholdTimer;
+
     protected Transform oldParent;
 
     protected virtual void Update()
@@ -23,6 +25,8 @@ public class PickupableObject : MonoBehaviour
         {
             hoverVisual.SetActive(HoveringPlayer != null && !IsPickedUp);
         }
+
+        pickupThresholdTimer -= Time.deltaTime;
     }
 
     public virtual void Pickup(Player player)
@@ -58,6 +62,12 @@ public class PickupableObject : MonoBehaviour
         GetComponent<Rigidbody>().isKinematic = false;
         transform.SetParent(oldParent, true);
         
+    }
+    public void SetPickupTimer(float time) {
+        pickupThresholdTimer = time;
+    }
+    public bool CanBePickedup() {
+        return pickupThresholdTimer <= 0f;
     }
 
     public virtual void HoverOver(Player player)

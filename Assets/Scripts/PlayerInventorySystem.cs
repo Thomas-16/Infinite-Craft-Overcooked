@@ -62,14 +62,16 @@ public class PlayerInventorySystem : MonoBehaviour
         }
 
 
-        hotbarItems[i] = pickedUpObj;
         if(!stackingIntoStack) {
             hotbarItemsUI[i].SetItem(((LLement) pickedUpObj).ElementName, ((LLement) pickedUpObj).GetEmojiRenderer().sprite, 1);
+            hotbarItems[i] = pickedUpObj;
             pickedUpObj.Pickup(player);
+
             Debug.Log("picked up item not into stack");
         } else {
             hotbarItemsUI[i].AddItemToStack();
             Destroy(pickedUpObj.gameObject);
+
             Debug.Log("picked up item into stack");
         }
         
@@ -94,7 +96,8 @@ public class PlayerInventorySystem : MonoBehaviour
 
         } else if (hotbarItemsUI[selectedIndex].StackCount > 1) {
             PickupableObject dupedItem = Instantiate(hotbarItems[selectedIndex].gameObject, hotbarItems[selectedIndex].gameObject.transform.position, hotbarItems[selectedIndex].gameObject.transform.rotation, hotbarItems[selectedIndex].gameObject.transform.parent).GetComponent<PickupableObject>();
-            
+
+            dupedItem.PickedupByPlayer = player;
             dupedItem.Drop(player);
             hotbarItemsUI[selectedIndex].RemoveItemFromStack();
 

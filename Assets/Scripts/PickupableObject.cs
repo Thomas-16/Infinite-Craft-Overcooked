@@ -5,8 +5,8 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody))]
 public class PickupableObject : MonoBehaviour
 {
-    public Player HoveringPlayer { get; protected set; } = null;
-    public Player PickedupByPlayer { get; private set; } = null;
+    public Player HoveringPlayer = null;
+    public Player PickedupByPlayer = null;
 
     [field: SerializeField]
     public bool IsPickedUp { get; protected set; }
@@ -57,6 +57,7 @@ public class PickupableObject : MonoBehaviour
         }
         GetComponent<Rigidbody>().isKinematic = false;
         transform.SetParent(oldParent, true);
+        
     }
 
     public virtual void HoverOver(Player player)

@@ -56,7 +56,7 @@ public class UIManager : MonoBehaviour
 		// Add to tracking dictionary with offset
 		worldToUIPanels[worldSpaceTarget] = (panel, offset);
 
-		Debug.Log("!!!! panel created: " + panel.name);
+		//Debug.Log("!!!! panel created: " + panel.name);
 		return panel;
 	}
 
@@ -115,6 +115,10 @@ public class UIManager : MonoBehaviour
 		}
 
 		panel.gameObject.SetActive(true);
+
+		if(!panel.ShouldBeActive) {
+			panel.gameObject.SetActive(false);
+		}
 
 		// Convert to canvas position
 		RectTransformUtility.ScreenPointToLocalPointInRectangle(

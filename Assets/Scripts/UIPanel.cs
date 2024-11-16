@@ -18,9 +18,13 @@ public class UIPanel : MonoBehaviour
 	public RectTransform RectTransform { get; private set; }
 	private RectTransform textRectTransform;
 
+	public bool ShouldBeActive = true;
+
 	private void Awake()
 	{
-		RectTransform = GetComponent<RectTransform>();
+		ShouldBeActive = true;
+
+        RectTransform = GetComponent<RectTransform>();
 		if (textDisplay != null)
 		{
 			textRectTransform = textDisplay.GetComponent<RectTransform>();

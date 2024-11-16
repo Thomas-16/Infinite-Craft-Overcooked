@@ -40,9 +40,11 @@ public class HotbarSlotUI : MonoBehaviour
             itemImage.color = new Color(0, 0, 0, 0);
             HasItem = false;
             ItemName = string.Empty;
+            itemCountTxt.gameObject.SetActive(false);
         } else {
             itemImage.color = Color.white;
             HasItem = true;
+            itemCountTxt.gameObject.SetActive(true);
         }
     }
     public void SetItem(string itemName, Sprite itemSprite, int stackCount) {

@@ -52,7 +52,9 @@ public class Player : MonoBehaviour
 	private float pickupInputStartTime;
 	private bool pickupInputActive = false;
 
-	private float throwChargeStartTime;
+    private PickupableObject hoveringObject;
+
+    private float throwChargeStartTime;
 	private bool isChargingThrow = false;
 	private ParticleSystem.EmissionModule emissionModule;
 	private UIPanel throwPowerBarPanel;
@@ -365,6 +367,12 @@ public class Player : MonoBehaviour
 
 	private void HandlePickupObjects()
     {
+        // Clear previous hover if we had one and didn't find it in this frame
+        if (hoveringObject != null) {
+            hoveringObject.ClearHover();
+            hoveringObject = null;
+        }
+
         RaycastHit[] raycastHits = coneCastHelper.ConeCast(lookingRaycastPositionTransform.position, transform.forward, raycastDistance);
         if (debugVisualizeRays)
         {
@@ -383,6 +391,8 @@ public class Player : MonoBehaviour
 
 				if(pickupableObject.CanBePickedup()) {
                     playerInventorySystem.AddItem(pickupableObject);
+                } else {
+                    hoveringObject = pickupableObject;
                 }
                 return;
             }
@@ -414,10 +424,15 @@ public class Player : MonoBehaviour
                     // If we were charging, throw
                     ReleaseThrow();
                 }
+
                 else if (Time.time - pickupInputStartTime < 0.2f)
                 {
-                    if (playerInventorySystem.GetCurrentHoldingItem() != null)
-                    {
+                    // Quick tap - toggle pickup/drop
+                    if (!playerInventorySystem.IsInventoryFull() && hoveringObject != null) {
+                        // Pickup
+                        playerInventorySystem.AddItem(hoveringObject);
+                    }
+                    else if (playerInventorySystem.GetCurrentHoldingItem() != null) {
                         // Drop
 
 						playerInventorySystem.DropItem();

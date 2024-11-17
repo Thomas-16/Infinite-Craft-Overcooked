@@ -34,6 +34,7 @@ public class InventoryItemUI : MonoBehaviour
     public void UpdateItemInfo() {
         itemCountTxt.text = itemCount.ToString();
     }
+    public PickupableObject GetPhysicalItem() { return pickupableObject; }
     public void AddItemToStack() {
         itemCount++;
         UpdateItemInfo();
@@ -42,4 +43,6 @@ public class InventoryItemUI : MonoBehaviour
         itemCount--;
         UpdateItemInfo();
     }
+    public string GetItemName() { return itemName;  }
+    public int GetStackCount() { return itemCount; }
 }

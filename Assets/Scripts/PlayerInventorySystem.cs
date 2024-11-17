@@ -1,10 +1,3 @@
-using JetBrains.Annotations;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Security.Cryptography;
-using Unity.Burst;
-using Unity.Entities.UniversalDelegates;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -35,65 +28,132 @@ public class PlayerInventorySystem : MonoBehaviour
 
     public void AddItem(PickupableObject pickedUpObj) {
         int i = 0;
-        int emptySlotIndex = -1;
-        int stackableSlotIndex = -1;
+        int emptyHotbarSlotIndex = -1;
+        int stackableHotbarSlotIndex = -1;
+        int emptyInventorySlotIndex = -1;
+        int stackableInventorySlotIndex = -1;
+        bool puttingInInventory = false;
+        bool stackingIntoStack = false;
 
-        while (i < hotbarItems.Length) {
-            // Check if this slot is empty (no item)
-            if (!hotbarItemSlotsUI[i].HasItem && emptySlotIndex == -1) {
-                emptySlotIndex = i; // Remember the first empty slot
+        // Pass 1: Check for stackable slots
+        // 1. Check the hotbar for stackable slots
+        while (i < hotbarItemSlotsUI.Length) {
+            // Check if this slot has the same item and can be stacked
+            if (hotbarItemSlotsUI[i].ItemName == (pickedUpObj as LLement).ElementName &&
+                hotbarItemSlotsUI[i].StackCount < HotbarSlotUI.FULLSTACK_COUNT) {
+                stackableHotbarSlotIndex = i;
+                break; // Prioritize stacking into an existing stack
             }
 
-            // Check if this slot has the same item and can be stacked
-            if (hotbarItemSlotsUI[i].ItemName == (pickedUpObj as LLement).ElementName && hotbarItemSlotsUI[i].StackCount < HotbarSlotUI.FULLSTACK_COUNT) {
-                stackableSlotIndex = i; // Remember the first slot that can stack the item
-                break; // Prioritize stacking into an existing stack
+            // Remember the first empty hotbar slot
+            if (!hotbarItemSlotsUI[i].HasItem && emptyHotbarSlotIndex == -1) {
+                emptyHotbarSlotIndex = i;
             }
 
             i++;
         }
 
-        bool stackingIntoStack;
-        // Decide the slot to use
-        if (stackableSlotIndex != -1) {
-            // Stack into the existing stack
-            i = stackableSlotIndex;
-            stackingIntoStack = true;
+        // 2. Check the inventory for stackable slots
+        i = 0; // Reset the index for inventory check
+        while (i < inventoryItemSlotsUI.Length) {
+            // Check if this slot has an item before accessing it
+            if (inventoryItemSlotsUI[i].HasItem()) {
+                // Check if this slot has the same item and can be stacked
+                if (inventoryItemSlotsUI[i].GetItem().GetItemName() == (pickedUpObj as LLement).ElementName &&
+                    inventoryItemSlotsUI[i].GetItem().GetStackCount() < HotbarSlotUI.FULLSTACK_COUNT) {
+                    stackableInventorySlotIndex = i;
+                    break; // Prioritize stacking into an existing stack
+                }
+            }
+
+            // Remember the first empty inventory slot
+            if (!inventoryItemSlotsUI[i].HasItem() && emptyInventorySlotIndex == -1) {
+                emptyInventorySlotIndex = i;
+            }
+
+            i++;
         }
-        else if (emptySlotIndex != -1) {
-            // Use the first empty slot
-            i = emptySlotIndex;
+
+        // Decide the slot to use for stacking
+        if (stackableHotbarSlotIndex != -1) {
+            // Stack into the existing hotbar stack
+            i = stackableHotbarSlotIndex;
+            stackingIntoStack = true;
+            puttingInInventory = false;
+        }
+        else if (stackableInventorySlotIndex != -1) {
+            // Stack into the existing inventory stack
+            i = stackableInventorySlotIndex;
+            stackingIntoStack = true;
+            puttingInInventory = true;
+        }
+        // Decide the slot to use for placing in an empty slot
+        else if (emptyHotbarSlotIndex != -1) {
+            // Use the first empty hotbar slot
+            i = emptyHotbarSlotIndex;
             stackingIntoStack = false;
+            puttingInInventory = false;
+        }
+        else if (emptyInventorySlotIndex != -1) {
+            // Use the first empty inventory slot
+            i = emptyInventorySlotIndex;
+            stackingIntoStack = false;
+            puttingInInventory = true;
         }
         else {
             // No empty slots or available stacks, return (inventory is full)
+            Debug.Log("Inventory full");
             return;
         }
 
-        if(!stackingIntoStack) {
-            string itemName = ((LLement)pickedUpObj).ElementName;
-            Sprite itemSprite = ((LLement)pickedUpObj).GetEmojiRenderer().sprite;
-            InventoryItemUI newInventoryItem = Instantiate(inventoryItemUIPrefab, hotbarInventoryItemSlotsUI[i].transform.position, Quaternion.identity, hotbarInventoryItemSlotsUI[i].transform).GetComponent<InventoryItemUI>();
-            newInventoryItem.InitItemInfo(itemSprite, itemName, pickedUpObj);
 
-            hotbarItemSlotsUI[i].InitItemInfo(itemName, itemSprite, 1);
-            hotbarItems[i] = pickedUpObj;
-            pickedUpObj.Pickup(player);
 
-            Debug.Log("picked up item not into stack");
+        if (!puttingInInventory) {
+            // not putting in inventory
+            if (!stackingIntoStack) {
+                string itemName = ((LLement)pickedUpObj).ElementName;
+                Sprite itemSprite = ((LLement)pickedUpObj).GetEmojiRenderer().sprite;
+                InventoryItemUI newInventoryItem = Instantiate(inventoryItemUIPrefab, hotbarInventoryItemSlotsUI[i].transform.position, Quaternion.identity, hotbarInventoryItemSlotsUI[i].transform).GetComponent<InventoryItemUI>();
+                newInventoryItem.InitItemInfo(itemSprite, itemName, pickedUpObj);
+
+                hotbarItemSlotsUI[i].InitItemInfo(itemName, itemSprite, 1);
+                hotbarItems[i] = pickedUpObj;
+                pickedUpObj.Pickup(player);
+
+                Debug.Log("picked up item not into stack and into hotbar");
+            }
+            else {
+                hotbarItemSlotsUI[i].AddItemToStack();
+                hotbarInventoryItemSlotsUI[i].GetItem().AddItemToStack();
+                Destroy(pickedUpObj.gameObject);
+
+                Debug.Log("picked up item into stack and into hotbar");
+            }
+
+            if (pickedUpObj is LLement) {
+                ((LLement)pickedUpObj).UIPanelSetActive(false);
+            }
         } else {
-            hotbarItemSlotsUI[i].AddItemToStack();
-            hotbarInventoryItemSlotsUI[i].GetItem().AddItemToStack();
-            Destroy(pickedUpObj.gameObject);
+            // putting into inventory
+            if(!stackingIntoStack) {
+                string itemName = ((LLement)pickedUpObj).ElementName;
+                Sprite itemSprite = ((LLement)pickedUpObj).GetEmojiRenderer().sprite;
 
-            Debug.Log("picked up item into stack");
+                InventoryItemUI newInventoryItem = Instantiate(inventoryItemUIPrefab, inventoryItemSlotsUI[i].transform.position, Quaternion.identity, inventoryItemSlotsUI[i].transform).GetComponent<InventoryItemUI>();
+                newInventoryItem.InitItemInfo(itemSprite, itemName, pickedUpObj);
+                pickedUpObj.Pickup(player);
+
+                Debug.Log("picked up item not into stack and into inventory");
+            } else {
+                inventoryItemSlotsUI[i].GetItem().AddItemToStack();
+                Destroy(pickedUpObj.gameObject);
+
+                Debug.Log("picked up item into stack and into inventory");
+            }
         }
         
-        if(pickedUpObj is LLement) {
-            ((LLement)pickedUpObj).UIPanelSetActive(false);
-        }
 
-        UpdateHoldingItemGameObject();
+        UpdatePhysicalItemAppearences();
     }
     public void DropItem() {
         if (hotbarItemSlotsUI[selectedIndex].StackCount == 1) {
@@ -172,11 +232,9 @@ public class PlayerInventorySystem : MonoBehaviour
         isInventoryOpen = !isInventoryOpen;
         inventoryUI.SetActive(isInventoryOpen);
     }
-    // TODO: REFACTOR THIS
-    public bool IsInventoryFull() {
-        return hotbarItems[8] != null;
-    }
-    private void UpdateHoldingItemGameObject() {
+
+    private void UpdatePhysicalItemAppearences() {
+        // set not active for hotbar items except the one held
         foreach(PickupableObject item in hotbarItems) { 
             if(item == null) continue;
 
@@ -184,6 +242,13 @@ public class PlayerInventorySystem : MonoBehaviour
         }
         if(hotbarItems[selectedIndex] != null) {
             hotbarItems[selectedIndex].gameObject.SetActive(true);
+        }
+        
+        // set not active for all 
+        foreach(InventorySlotUI invSlot in inventoryItemSlotsUI) {
+            if(invSlot.HasItem()) {
+                invSlot.GetItem().GetPhysicalItem().gameObject.SetActive(false);
+            }
         }
     }
 
@@ -211,7 +276,7 @@ public class PlayerInventorySystem : MonoBehaviour
         selectedIndex = index;
         hotbarItemSlotsUI[selectedIndex].IsSelected = true;
 
-        UpdateHoldingItemGameObject();
+        UpdatePhysicalItemAppearences();
     }
     public bool IsInventoryOpen() { return isInventoryOpen; }
     public PickupableObject GetCurrentHoldingItem() { return hotbarItems[selectedIndex]; }

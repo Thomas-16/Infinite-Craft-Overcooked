@@ -423,7 +423,7 @@ public class Player : MonoBehaviour
                 else if (Time.time - pickupInputStartTime < 0.2f)
                 {
                     // Quick tap - toggle pickup/drop
-                    if (!playerInventorySystem.IsInventoryFull() && hoveringObject != null) {
+                    if (hoveringObject != null) {
                         // Pickup
                         playerInventorySystem.AddItem(hoveringObject);
                     }

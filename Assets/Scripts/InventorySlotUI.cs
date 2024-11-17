@@ -23,7 +23,7 @@ public class InventorySlotUI : MonoBehaviour, IPointerEnterHandler, IPointerExit
         bgImage.color = isSelected ? selectedColour : unselectedColour;
     }
     public bool HasItem() {
-        return GetComponentInChildren<InventoryItemUI>() == null;
+        return GetComponentInChildren<InventoryItemUI>() != null;
     }
     public InventoryItemUI GetItem() {
         return GetComponentInChildren<InventoryItemUI>();

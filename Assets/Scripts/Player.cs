@@ -178,10 +178,12 @@ public class Player : MonoBehaviour
     protected virtual void Update()
     {
         HandleMovement();
-        HandlePickupObjects();
-        HandlePickupInput();
+        HandleAutoPickupObjects();
+		if(!playerInventorySystem.IsInventoryOpen())
+			HandlePickupDropInput();
 		HandleSprintResource();
-		HandleThrowInput();
+        if (!playerInventorySystem.IsInventoryOpen())
+            HandleThrowInput();
 
         if (isChargingThrow)
         {
@@ -343,14 +345,7 @@ public class Player : MonoBehaviour
 
     private void ReleaseThrow()
     {
-        float chargeTime = Mathf.Min(Time.time - throwChargeStartTime, maxChargeTime);
-        float chargePercent = chargeTime / maxChargeTime;
-        float throwForce = Mathf.Lerp(minThrowForce, maxThrowForce, chargePercent);
-
-        Vector3 throwDirection = transform.forward + (Vector3.up * throwUpwardAngle);
-        throwDirection.Normalize();
-
-		playerInventorySystem.ThrowItem();
+        playerInventorySystem.ThrowItem(throwChargeStartTime, maxChargeTime, minThrowForce, maxThrowForce, throwUpwardAngle);
 
         isChargingThrow = false;
         
@@ -365,7 +360,7 @@ public class Player : MonoBehaviour
         }
     }
 
-	private void HandlePickupObjects()
+	private void HandleAutoPickupObjects()
     {
         // Clear previous hover if we had one and didn't find it in this frame
         if (hoveringObject != null) {
@@ -399,7 +394,7 @@ public class Player : MonoBehaviour
         }
     }
 
-	private void HandlePickupInput()
+	private void HandlePickupDropInput()
     {
         if (InputManager.Instance.GetPickupInput()) // F button pressed
         {

@@ -30,6 +30,7 @@ public class UIPanel : MonoBehaviour
 			textRectTransform = textDisplay.GetComponent<RectTransform>();
 		}
 		ValidateComponents();
+		transform.SetAsFirstSibling();
 	}
 
 	private void ValidateComponents()

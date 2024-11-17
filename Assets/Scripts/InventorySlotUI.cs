@@ -12,13 +12,8 @@ public class InventorySlotUI : MonoBehaviour, IPointerEnterHandler, IPointerExit
     [SerializeField] private Color unselectedColour;
     [SerializeField] private Color selectedColour;
 
-    [field: SerializeField] public int StackCount { get; private set; }
-
     private bool isSelected;
     private Image bgImage;
-    [SerializeField] private Image itemImage;
-    [SerializeField] private TextMeshProUGUI itemCountTxt;
-
 
     private void Awake() {
         bgImage = GetComponent<Image>();
@@ -28,16 +23,14 @@ public class InventorySlotUI : MonoBehaviour, IPointerEnterHandler, IPointerExit
         bgImage.color = isSelected ? selectedColour : unselectedColour;
     }
     public bool HasItem() {
-        // TODO: return if item found as transform child
-        return false;
+        return GetComponentInChildren<InventoryItemUI>() == null;
     }
-    public void AddItemToStack() {
-        StackCount++;
+    public InventoryItemUI GetItem() {
+        return GetComponentInChildren<InventoryItemUI>();
     }
-    public void RemoveItemFromStack() {
-        StackCount--;
+    public void DestroyItem() {
+        Destroy(GetComponentInChildren<InventoryItemUI>().gameObject);
     }
-
 
     public void OnPointerEnter(PointerEventData eventData) {
         isSelected = true;

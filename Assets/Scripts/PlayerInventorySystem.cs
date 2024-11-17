@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using Unity.Burst;
+using Unity.Entities.UniversalDelegates;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -14,6 +15,7 @@ public class PlayerInventorySystem : MonoBehaviour
     private bool isInventoryOpen = false;
 
     [SerializeField] private GameObject inventoryUI;
+    [SerializeField] private GameObject inventoryItemUIPrefab;
     [SerializeField] private HotbarSlotUI[] hotbarItemSlotsUI;
     [SerializeField] private InventorySlotUI[] hotbarInventoryItemSlotsUI;
     [SerializeField] private InventorySlotUI[] inventoryItemSlotsUI;
@@ -68,15 +70,20 @@ public class PlayerInventorySystem : MonoBehaviour
             return;
         }
 
-
         if(!stackingIntoStack) {
-            hotbarItemSlotsUI[i].SetItem(((LLement) pickedUpObj).ElementName, ((LLement) pickedUpObj).GetEmojiRenderer().sprite, 1);
+            string itemName = ((LLement)pickedUpObj).ElementName;
+            Sprite itemSprite = ((LLement)pickedUpObj).GetEmojiRenderer().sprite;
+            InventoryItemUI newInventoryItem = Instantiate(inventoryItemUIPrefab, hotbarInventoryItemSlotsUI[i].transform.position, Quaternion.identity, hotbarInventoryItemSlotsUI[i].transform).GetComponent<InventoryItemUI>();
+            newInventoryItem.InitItemInfo(itemSprite, itemName, pickedUpObj);
+
+            hotbarItemSlotsUI[i].InitItemInfo(itemName, itemSprite, 1);
             hotbarItems[i] = pickedUpObj;
             pickedUpObj.Pickup(player);
 
             Debug.Log("picked up item not into stack");
         } else {
             hotbarItemSlotsUI[i].AddItemToStack();
+            hotbarInventoryItemSlotsUI[i].GetItem().AddItemToStack();
             Destroy(pickedUpObj.gameObject);
 
             Debug.Log("picked up item into stack");
@@ -86,16 +93,17 @@ public class PlayerInventorySystem : MonoBehaviour
             ((LLement)pickedUpObj).UIPanelSetActive(false);
         }
 
-        UpdateHoldingItem();
+        UpdateHoldingItemGameObject();
     }
     public void DropItem() {
         if (hotbarItemSlotsUI[selectedIndex].StackCount == 1) {
             hotbarItems[selectedIndex].Drop(player);
             
             hotbarItemSlotsUI[selectedIndex].RemoveItemFromStack();
+            hotbarInventoryItemSlotsUI[selectedIndex].DestroyItem();
 
             if (hotbarItems[selectedIndex] is LLement) {
-                ((LLement)hotbarItems[selectedIndex]).UIPanelSetActive(false);
+                ((LLement)hotbarItems[selectedIndex]).UIPanelSetActive(true);
             }
             hotbarItems[selectedIndex].SetPickupTimer(4f);
             hotbarItems[selectedIndex] = null;
@@ -109,9 +117,10 @@ public class PlayerInventorySystem : MonoBehaviour
             dupedItem.Drop(player);
             dupedItem.SetPickupTimer(4f);
             hotbarItemSlotsUI[selectedIndex].RemoveItemFromStack();
+            hotbarInventoryItemSlotsUI[selectedIndex].GetItem().RemoveItemFromStack();
 
             if (dupedItem is LLement) {
-                ((LLement)dupedItem).UIPanelSetActive(false);
+                ((LLement)dupedItem).UIPanelSetActive(true);
             }
 
             Debug.Log("dropping from stack");
@@ -130,9 +139,10 @@ public class PlayerInventorySystem : MonoBehaviour
             hotbarItems[selectedIndex].Drop(player);
 
             hotbarItemSlotsUI[selectedIndex].RemoveItemFromStack();
+            hotbarInventoryItemSlotsUI[selectedIndex].DestroyItem();
 
             if (hotbarItems[selectedIndex] is LLement) {
-                ((LLement)hotbarItems[selectedIndex]).UIPanelSetActive(false);
+                ((LLement)hotbarItems[selectedIndex]).UIPanelSetActive(true);
             }
             hotbarItems[selectedIndex].SetPickupTimer(4f);
             hotbarItems[selectedIndex].GetComponent<Rigidbody>().AddForce(throwDirection * throwForce);
@@ -148,9 +158,10 @@ public class PlayerInventorySystem : MonoBehaviour
             dupedItem.Drop(player);
             dupedItem.SetPickupTimer(4f);
             hotbarItemSlotsUI[selectedIndex].RemoveItemFromStack();
+            hotbarInventoryItemSlotsUI[selectedIndex].GetItem().RemoveItemFromStack();
 
             if (dupedItem is LLement) {
-                ((LLement)dupedItem).UIPanelSetActive(false);
+                ((LLement)dupedItem).UIPanelSetActive(true);
             }
             dupedItem.GetComponent<Rigidbody>().AddForce(throwDirection * throwForce);
 
@@ -161,11 +172,11 @@ public class PlayerInventorySystem : MonoBehaviour
         isInventoryOpen = !isInventoryOpen;
         inventoryUI.SetActive(isInventoryOpen);
     }
-
+    // TODO: REFACTOR THIS
     public bool IsInventoryFull() {
         return hotbarItems[8] != null;
     }
-    private void UpdateHoldingItem() {
+    private void UpdateHoldingItemGameObject() {
         foreach(PickupableObject item in hotbarItems) { 
             if(item == null) continue;
 
@@ -200,7 +211,7 @@ public class PlayerInventorySystem : MonoBehaviour
         selectedIndex = index;
         hotbarItemSlotsUI[selectedIndex].IsSelected = true;
 
-        UpdateHoldingItem();
+        UpdateHoldingItemGameObject();
     }
     public bool IsInventoryOpen() { return isInventoryOpen; }
     public PickupableObject GetCurrentHoldingItem() { return hotbarItems[selectedIndex]; }

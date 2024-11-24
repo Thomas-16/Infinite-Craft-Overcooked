@@ -47,7 +47,7 @@ public class HotbarSlotUI : MonoBehaviour
             itemCountTxt.gameObject.SetActive(true);
         }
     }
-    public void InitItemInfo(string itemName, Sprite itemSprite, int stackCount) {
+    public void SetItemInfo(string itemName, Sprite itemSprite, int stackCount) {
         ItemName = itemName;
         ItemSprite = itemSprite;
         itemImage.sprite = itemSprite;

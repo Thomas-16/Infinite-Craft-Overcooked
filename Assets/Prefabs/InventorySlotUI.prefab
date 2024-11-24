@@ -149,6 +149,3 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   unselectedColour: {r: 0.9098039, g: 0.9098039, b: 0.9098039, a: 1}
   selectedColour: {r: 0.7509433, g: 0.7509433, b: 0.7509433, a: 1}
-  <StackCount>k__BackingField: 0
-  itemImage: {fileID: 0}
-  itemCountTxt: {fileID: 0}

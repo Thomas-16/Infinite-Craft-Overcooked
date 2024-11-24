@@ -33,7 +33,11 @@ public class Player : MonoBehaviour
 	[SerializeField] private Color nametagColor = Color.white;
 	[SerializeField] private UIPanel nametagPrefab;
 
-	[Header("Throwing Settings")]
+	[Header("Health bar Settings")]
+	[SerializeField] private UIPanel healthBarPrefab;
+	[SerializeField] private Transform healthBarTransformReference;
+
+    [Header("Throwing Settings")]
 	[SerializeField] private float minThrowForce = 500f;
 	[SerializeField] private float maxThrowForce = 2000f;
 	[SerializeField] private float maxChargeTime = 1.5f;
@@ -70,7 +74,10 @@ public class Player : MonoBehaviour
 	private bool isSprinting;
 	private SprintBar sprintBar;
 	private UIPanel sprintBarPanel;
+	private UIPanel healthBarPanel;
+	private HealthBar healthBar;
 	private PlayerInventorySystem playerInventorySystem;
+	private HealthSystem healthSystem;
 
 	[SerializeField] private float currentSprintResource;
 	private float sprintRecoveryTimer;
@@ -80,6 +87,7 @@ public class Player : MonoBehaviour
 		_character = GetComponent<Character>();
 		mainCamera = Camera.main;
         playerInventorySystem = GetComponent<PlayerInventorySystem>();
+		healthSystem = GetComponent<HealthSystem>();
 
         coneCastHelper = new ConeCastHelper();
 		coneCastHelper.InitializeConeCast(rayCastAngle, numRaycastRays);
@@ -102,6 +110,7 @@ public class Player : MonoBehaviour
 
 		SetupNametag();
 		SetupSprintBar();
+		SetupHealthBar();
 		SetupThrowUI();
 
 		defaultWalkSpeed = _character.maxWalkSpeed;
@@ -140,8 +149,19 @@ public class Player : MonoBehaviour
 			}
 		}
 	}
+    private void SetupHealthBar() {
+        if (UIManager.Instance != null) {
+            healthBarPanel = UIManager.Instance.CreateWorldPositionedPanel(
+                healthBarTransformReference,
+                healthBarPrefab,
+                Vector3.zero
+            );
 
-	private void SetupNametag()
+            healthBar = healthBarPanel.GetComponent<HealthBar>();
+        }
+    }
+
+    private void SetupNametag()
 	{
 		if (UIManager.Instance != null)
 		{

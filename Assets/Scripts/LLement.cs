@@ -194,6 +194,18 @@ public class LLement : PickupableObject
             Debug.LogError($"[LLement] Error setting element name {elementName}: {e.Message}");
         }
     }
+	public void SetElementNameAndSprite(string elementName, Sprite elementSprite) {
+        ElementName = elementName;
+
+        if (namePanel != null) {
+            namePanel.SetText(elementName);
+        }
+        emojiRenderer.gameObject.SetActive(true);
+        emojiRenderer.sprite = elementSprite;
+
+        ApplyMetadataScale();
+        AdjustSpriteToCollider();
+    }
 
 	private void ApplyMetadataScale()
 	{

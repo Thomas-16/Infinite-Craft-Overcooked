@@ -1,27 +1,19 @@
 using System.Collections;
 using System.Collections.Generic;
-using System.Security.Cryptography;
-using TMPro;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-public class InventorySlotUI : MonoBehaviour
+public class CombiningSlotUI : MonoBehaviour
 {
-    public static readonly int FULLSTACK_COUNT = 64;
-
     [SerializeField] private Color unselectedColour;
     [SerializeField] private Color selectedColour;
 
     private bool isSelected;
     private Image bgImage;
-    public bool IsHotbar = false;
-    public int HotbarSlotIndex;
 
     private void Awake() {
         bgImage = GetComponent<Image>();
     }
-    
     private void Update() {
         Vector2 rectPosition = GetComponent<RectTransform>().position; // Center position of the UI element in screen space
         Vector2 rectSize = GetComponent<RectTransform>().sizeDelta;   // Size of the UI element in local space
@@ -47,4 +39,5 @@ public class InventorySlotUI : MonoBehaviour
     public void DestroyItem() {
         Destroy(GetItem().gameObject);
     }
+
 }

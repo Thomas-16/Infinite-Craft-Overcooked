@@ -6,7 +6,7 @@ using Pathfinding;
 public enum ZombieState { Idle, Chase }
 
 [RequireComponent(typeof(Seeker), typeof(CharacterController))]
-public class ZombieBehavior : MonoBehaviour
+public class Zombie : MonoBehaviour
 {
     // Movement parameters
     [SerializeField] private float speed = 2f;

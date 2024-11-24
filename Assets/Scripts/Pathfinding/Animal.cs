@@ -3,7 +3,7 @@ using UnityEngine;
 using Pathfinding;
 
 [RequireComponent(typeof(Seeker), typeof(CharacterController))]
-public class AnimalAI : MonoBehaviour
+public class Animal : MonoBehaviour
 {
     // Movement parameters
     [SerializeField] private float baseSpeed = 1.5f; // Base speed of the animal

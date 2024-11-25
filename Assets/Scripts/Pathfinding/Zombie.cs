@@ -32,6 +32,11 @@ public class Zombie : MonoBehaviour
 
     private bool isIdleMoving = false;
 
+    private HealthSystem healthSystem;
+
+    private void Awake() {
+        healthSystem = GetComponent<HealthSystem>();
+    }
     void Start() {
         seeker = GetComponent<Seeker>();
         characterController = GetComponent<CharacterController>();

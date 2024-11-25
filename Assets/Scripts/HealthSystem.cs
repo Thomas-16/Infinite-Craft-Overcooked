@@ -11,7 +11,7 @@ public class HealthSystem : MonoBehaviour
     private UIPanel healthBarPanel;
     private HealthBar healthBar;
 
-    public event Action<int> OnHealthChanged;
+    public event Action<float> OnHealthChanged;
 
     [SerializeField] private UIPanel healthBarPrefab;
     [SerializeField] private float healthBarOffset = 2.545f;
@@ -24,7 +24,11 @@ public class HealthSystem : MonoBehaviour
     }
 
     public void Damage(float damage) {
-        
+        health -= damage;
+        health = Mathf.Clamp(health, 0, MAX_HEALTH);
+
+        healthBar.UpdateHealthBar(health / MAX_HEALTH);
+        OnHealthChanged?.Invoke(health);
     }
     private void SetupHealthBar() {
         if (UIManager.Instance != null) {

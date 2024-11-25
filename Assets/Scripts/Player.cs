@@ -33,9 +33,6 @@ public class Player : MonoBehaviour
 	[SerializeField] private Color nametagColor = Color.white;
 	[SerializeField] private UIPanel nametagPrefab;
 
-	[Header("Health bar Settings")]
-	[SerializeField] private UIPanel healthBarPrefab;
-	[SerializeField] private Transform healthBarTransformReference;
 
     [Header("Throwing Settings")]
 	[SerializeField] private float minThrowForce = 500f;
@@ -74,8 +71,6 @@ public class Player : MonoBehaviour
 	private bool isSprinting;
 	private SprintBar sprintBar;
 	private UIPanel sprintBarPanel;
-	private UIPanel healthBarPanel;
-	private HealthBar healthBar;
 	private PlayerInventorySystem playerInventorySystem;
 	private HealthSystem healthSystem;
 
@@ -110,7 +105,6 @@ public class Player : MonoBehaviour
 
 		SetupNametag();
 		SetupSprintBar();
-		SetupHealthBar();
 		SetupThrowUI();
 
 		defaultWalkSpeed = _character.maxWalkSpeed;
@@ -149,17 +143,6 @@ public class Player : MonoBehaviour
 			}
 		}
 	}
-    private void SetupHealthBar() {
-        if (UIManager.Instance != null) {
-            healthBarPanel = UIManager.Instance.CreateWorldPositionedPanel(
-                healthBarTransformReference,
-                healthBarPrefab,
-                Vector3.zero
-            );
-
-            healthBar = healthBarPanel.GetComponent<HealthBar>();
-        }
-    }
 
     private void SetupNametag()
 	{

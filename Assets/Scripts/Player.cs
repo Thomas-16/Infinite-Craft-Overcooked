@@ -20,6 +20,8 @@ public class Player : MonoBehaviour
 
 	[Header("Sprint Settings")]
 	[SerializeField] private float sprintSpeedMultiplier = 2f;
+	[SerializeField] private float maxHungerResource = 100f;
+  [SerializeField] private float starveRate = 2f;    // Units per second
 	[SerializeField] private float maxSprintResource = 100f;
 	[SerializeField] private float sprintDrainRate = 25f;    // Units per second
 	[SerializeField] private float sprintRecoveryRate = 15f; // Units per second
@@ -73,7 +75,9 @@ public class Player : MonoBehaviour
 	private UIPanel sprintBarPanel;
 	private PlayerInventorySystem playerInventorySystem;
 	private HealthSystem healthSystem;
+	private HungerSystem hungerSystem;
 
+	[SerializeField] private float currentHungerResource;
 	[SerializeField] private float currentSprintResource;
 	private float sprintRecoveryTimer;
 	private bool canSprint => currentSprintResource > 0f;
@@ -83,6 +87,7 @@ public class Player : MonoBehaviour
 		mainCamera = Camera.main;
         playerInventorySystem = GetComponent<PlayerInventorySystem>();
 		healthSystem = GetComponent<HealthSystem>();
+		hungerSystem = GetComponent<HungerSystem>();
 
         coneCastHelper = new ConeCastHelper();
 		coneCastHelper.InitializeConeCast(rayCastAngle, numRaycastRays);
@@ -109,6 +114,7 @@ public class Player : MonoBehaviour
 
 		defaultWalkSpeed = _character.maxWalkSpeed;
 		currentSprintResource = maxSprintResource;
+		currentHungerResource = maxHungerResource;
 	}
 
 	private void SetupThrowUI()
@@ -180,6 +186,7 @@ public class Player : MonoBehaviour
 
     protected virtual void Update()
     {
+        Starve();
         HandleMovement();
         HandleAutoPickupObjects();
 		if(!playerInventorySystem.IsInventoryOpen())
@@ -444,6 +451,10 @@ public class Player : MonoBehaviour
 	public void Damage(float damage) {
 		healthSystem.Damage(damage);
 	}
+  public void Starve() {
+    currentHungerResource = Mathf.Max(0f, currentHungerResource - (starveRate * Time.deltaTime));
+    hungerSystem.Starve(currentHungerResource);
+  }
 	private void OnSprintPressed(InputAction.CallbackContext context)
 	{
 		if (_character.IsWalking() && !_character.IsCrouched() && canSprint)

@@ -441,7 +441,9 @@ public class Player : MonoBehaviour
         }
     }
 
-
+	public void Damage(float damage) {
+		healthSystem.Damage(damage);
+	}
 	private void OnSprintPressed(InputAction.CallbackContext context)
 	{
 		if (_character.IsWalking() && !_character.IsCrouched() && canSprint)

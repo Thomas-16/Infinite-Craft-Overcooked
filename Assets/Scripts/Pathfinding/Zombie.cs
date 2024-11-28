@@ -2,18 +2,22 @@ using System.Collections;
 using UnityEngine;
 using Pathfinding;
 
-
 public enum ZombieState { Idle, Chase }
 
 [RequireComponent(typeof(Seeker), typeof(CharacterController))]
 public class Zombie : MonoBehaviour
 {
-    // Movement parameters
+    [Header("Movement Parameters")]
     [SerializeField] private float speed = 2f;
     [SerializeField] private float chaseUpdateInterval = 1f;
     [SerializeField] private float idleWanderRadius = 5f;
     [SerializeField] private float stopDistance = 1.5f;
     [SerializeField] private float idlePauseDuration = 2f;
+
+    [Header("Attack Parameters")]
+    [SerializeField] private float attackRange = 2f;
+    [SerializeField] private float attackCooldown = 1f;
+    [SerializeField] private int attackDamage = 10;
 
     // A* components
     private Seeker seeker;
@@ -31,12 +35,14 @@ public class Zombie : MonoBehaviour
     private ZombieState currentState = ZombieState.Chase;
 
     private bool isIdleMoving = false;
+    private float nextAttackTime = 0f; // Cooldown for the next attack
 
     private HealthSystem healthSystem;
 
     private void Awake() {
         healthSystem = GetComponent<HealthSystem>();
     }
+
     void Start() {
         seeker = GetComponent<Seeker>();
         characterController = GetComponent<CharacterController>();
@@ -60,6 +66,9 @@ public class Zombie : MonoBehaviour
         if (currentPath != null && currentWaypoint < currentPath.vectorPath.Count) {
             MoveAlongPath();
         }
+
+        // Check if the zombie can attack the player
+        CheckAttackPlayer();
     }
 
     private IEnumerator IdleBehavior() {
@@ -138,6 +147,25 @@ public class Zombie : MonoBehaviour
             targetRotation = Quaternion.Euler(0f, targetRotation.eulerAngles.y, 0f);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * speed);
         }
+    }
+
+    private void CheckAttackPlayer() {
+        // Check distance to the player
+        GameObject player = GameManager.Instance.Player.gameObject;
+        if (player == null) return;
+
+        float distanceToPlayer = Vector3.Distance(transform.position, player.transform.position);
+
+        // Attack if within range and cooldown has elapsed
+        if (distanceToPlayer <= attackRange && Time.time >= nextAttackTime) {
+            nextAttackTime = Time.time + attackCooldown; // Reset the cooldown
+            AttackPlayer();
+        }
+    }
+
+    private void AttackPlayer() {
+        GameManager.Instance.Player.Damage(attackDamage);
+        Debug.Log("attacked player", this);
     }
 
     // Method to manually switch behavior states

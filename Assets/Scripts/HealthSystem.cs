@@ -11,9 +11,8 @@ public class HealthSystem : MonoBehaviour
     private UIPanel healthBarPanel;
     private HealthBar healthBar;
 
-    public event Action<float> OnHealthChanged;
-
     [SerializeField] private UIPanel healthBarPrefab;
+    [SerializeField] private Transform referencePointTransform;
     [SerializeField] private float healthBarOffset = 2.545f;
 
     private void Awake() {
@@ -28,12 +27,11 @@ public class HealthSystem : MonoBehaviour
         health = Mathf.Clamp(health, 0, MAX_HEALTH);
 
         healthBar.UpdateHealthBar(health / MAX_HEALTH);
-        OnHealthChanged?.Invoke(health);
     }
     private void SetupHealthBar() {
         if (UIManager.Instance != null) {
             healthBarPanel = UIManager.Instance.CreateWorldPositionedPanel(
-                transform,
+                referencePointTransform == null ? transform : referencePointTransform,
                 healthBarPrefab,
                 new Vector3(0, healthBarOffset, 0)
             );

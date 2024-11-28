@@ -5,14 +5,16 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody))]
 public class PickupableObject : MonoBehaviour
 {
-    public Player HoveringPlayer { get; protected set; } = null;
-    public Player PickedupByPlayer { get; private set; } = null;
+    public Player HoveringPlayer = null;
+    public Player PickedupByPlayer = null;
 
     [field: SerializeField]
     public bool IsPickedUp { get; protected set; }
 
     [SerializeField] private GameObject hoverVisual;
     [SerializeField] protected Collider[] mainColliders;
+
+    private float pickupThresholdTimer;
 
     protected Transform oldParent;
 
@@ -23,6 +25,8 @@ public class PickupableObject : MonoBehaviour
         {
             hoverVisual.SetActive(HoveringPlayer != null && !IsPickedUp);
         }
+
+        pickupThresholdTimer -= Time.deltaTime;
     }
 
     public virtual void Pickup(Player player)
@@ -57,6 +61,13 @@ public class PickupableObject : MonoBehaviour
         }
         GetComponent<Rigidbody>().isKinematic = false;
         transform.SetParent(oldParent, true);
+        
+    }
+    public void SetPickupTimer(float time) {
+        pickupThresholdTimer = time;
+    }
+    public bool CanBePickedup() {
+        return pickupThresholdTimer <= 0f;
     }
 
     public virtual void HoverOver(Player player)

@@ -33,7 +33,8 @@ public class Player : MonoBehaviour
 	[SerializeField] private Color nametagColor = Color.white;
 	[SerializeField] private UIPanel nametagPrefab;
 
-	[Header("Throwing Settings")]
+
+    [Header("Throwing Settings")]
 	[SerializeField] private float minThrowForce = 500f;
 	[SerializeField] private float maxThrowForce = 2000f;
 	[SerializeField] private float maxChargeTime = 1.5f;
@@ -49,21 +50,16 @@ public class Player : MonoBehaviour
 	[SerializeField] private UIPanel throwPowerBarPrefab;
 	[SerializeField] private float throwBarOffset = 1.75f;
 
-	private PickupableObject hoveringObject;
-	private PickupableObject pickedupObject;
-	private bool isHoldingObject;
 	private float pickupInputStartTime;
 	private bool pickupInputActive = false;
-	private bool justPickedUp = false;
 
-	private float throwChargeStartTime;
+    private PickupableObject hoveringObject;
+
+    private float throwChargeStartTime;
 	private bool isChargingThrow = false;
 	private ParticleSystem.EmissionModule emissionModule;
 	private UIPanel throwPowerBarPanel;
 	private ThrowPowerBar throwPowerBar;
-
-	private float lastTriedToMergeTime;
-	private bool interactInputActive;
 
 	protected Character _character;
 	private Camera mainCamera;
@@ -75,18 +71,20 @@ public class Player : MonoBehaviour
 	private bool isSprinting;
 	private SprintBar sprintBar;
 	private UIPanel sprintBarPanel;
+	private PlayerInventorySystem playerInventorySystem;
+	private HealthSystem healthSystem;
 
 	[SerializeField] private float currentSprintResource;
 	private float sprintRecoveryTimer;
 	private bool canSprint => currentSprintResource > 0f;
-    private Vector3 initialThrowDirection;  // Add this field at class level
-
 	protected virtual void Awake()
 	{
 		_character = GetComponent<Character>();
 		mainCamera = Camera.main;
+        playerInventorySystem = GetComponent<PlayerInventorySystem>();
+		healthSystem = GetComponent<HealthSystem>();
 
-		coneCastHelper = new ConeCastHelper();
+        coneCastHelper = new ConeCastHelper();
 		coneCastHelper.InitializeConeCast(rayCastAngle, numRaycastRays);
 
 		if (chargingParticleSystem != null)
@@ -146,7 +144,7 @@ public class Player : MonoBehaviour
 		}
 	}
 
-	private void SetupNametag()
+    private void SetupNametag()
 	{
 		if (UIManager.Instance != null)
 		{
@@ -183,9 +181,12 @@ public class Player : MonoBehaviour
     protected virtual void Update()
     {
         HandleMovement();
-        HandleHoverObjects();
-        HandlePickupInput();
+        HandleAutoPickupObjects();
+		if(!playerInventorySystem.IsInventoryOpen())
+			HandlePickupDropInput();
 		HandleSprintResource();
+        if (!playerInventorySystem.IsInventoryOpen())
+            HandleThrowInput();
 
         if (isChargingThrow)
         {
@@ -285,7 +286,7 @@ public class Player : MonoBehaviour
 
     private void HandleThrowInput()
     {
-        if (isHoldingObject)
+        if (playerInventorySystem.GetCurrentHoldingItem() != null)
         {
             // Start charging if holding F long enough after pickup
             bool shouldStartCharge = pickupInputActive && Time.time - pickupInputStartTime > 0.1f && !isChargingThrow;
@@ -315,7 +316,7 @@ public class Player : MonoBehaviour
 
         if (chargingParticleSystem != null)
         {
-            chargingParticleSystem.transform.position = pickedupObject.transform.position;
+			chargingParticleSystem.transform.position = playerInventorySystem.GetCurrentHoldingItem().transform.position;
             chargingParticleSystem.Play();
         }
 
@@ -339,7 +340,7 @@ public class Player : MonoBehaviour
 
         if (chargingParticleSystem != null)
         {
-            chargingParticleSystem.transform.position = pickedupObject.transform.position;
+            chargingParticleSystem.transform.position = playerInventorySystem.GetCurrentHoldingItem().transform.position;
             float emissionRate = chargingParticlesCurve.Evaluate(chargePercent);
             emissionModule.rateOverTime = emissionRate * 50f;
         }
@@ -347,17 +348,7 @@ public class Player : MonoBehaviour
 
     private void ReleaseThrow()
     {
-        float chargeTime = Mathf.Min(Time.time - throwChargeStartTime, maxChargeTime);
-        float chargePercent = chargeTime / maxChargeTime;
-        float throwForce = Mathf.Lerp(minThrowForce, maxThrowForce, chargePercent);
-
-        Vector3 throwDirection = transform.forward + (Vector3.up * throwUpwardAngle);
-        throwDirection.Normalize();
-
-        isHoldingObject = false;
-        pickedupObject.Drop(this);
-        pickedupObject.GetComponent<Rigidbody>().AddForce(throwDirection * throwForce);
-        pickedupObject = null;
+        playerInventorySystem.ThrowItem(throwChargeStartTime, maxChargeTime, minThrowForce, maxThrowForce, throwUpwardAngle);
 
         isChargingThrow = false;
         
@@ -372,11 +363,10 @@ public class Player : MonoBehaviour
         }
     }
 
-	private void HandleHoverObjects()
+	private void HandleAutoPickupObjects()
     {
         // Clear previous hover if we had one and didn't find it in this frame
-        if (hoveringObject != null)
-        {
+        if (hoveringObject != null) {
             hoveringObject.ClearHover();
             hoveringObject = null;
         }
@@ -396,13 +386,18 @@ public class Player : MonoBehaviour
             if (pickupableObject != null && !pickupableObject.IsPickedUp)
             {
                 pickupableObject.HoverOver(this);
-                hoveringObject = pickupableObject;
+
+				if(pickupableObject.CanBePickedup()) {
+                    playerInventorySystem.AddItem(pickupableObject);
+                } else {
+                    hoveringObject = pickupableObject;
+                }
                 return;
             }
         }
     }
 
-	private void HandlePickupInput()
+	private void HandlePickupDropInput()
     {
         if (InputManager.Instance.GetPickupInput()) // F button pressed
         {
@@ -413,7 +408,7 @@ public class Player : MonoBehaviour
             }
             
             // Check for long hold (0.2s) to start charging
-            if (isHoldingObject && !isChargingThrow && Time.time - pickupInputStartTime >= 0.2f)
+            if (playerInventorySystem.GetCurrentHoldingItem() != null && !isChargingThrow && Time.time - pickupInputStartTime >= 0.2f)
             {
                 StartThrowCharge();
             }
@@ -427,23 +422,18 @@ public class Player : MonoBehaviour
                     // If we were charging, throw
                     ReleaseThrow();
                 }
+
                 else if (Time.time - pickupInputStartTime < 0.2f)
                 {
                     // Quick tap - toggle pickup/drop
-                    if (!isHoldingObject && hoveringObject != null)
-                    {
+                    if (hoveringObject != null) {
                         // Pickup
-                        isHoldingObject = true;
-                        hoveringObject.GetComponent<Rigidbody>().isKinematic = true;
-                        hoveringObject.Pickup(this);
-                        pickedupObject = hoveringObject;
+                        playerInventorySystem.AddItem(hoveringObject);
                     }
-                    else if (isHoldingObject)
-                    {
+                    else if (playerInventorySystem.GetCurrentHoldingItem() != null) {
                         // Drop
-                        isHoldingObject = false;
-                        pickedupObject.Drop(this);
-                        pickedupObject = null;
+
+						playerInventorySystem.DropItem();
                     }
                 }
             }

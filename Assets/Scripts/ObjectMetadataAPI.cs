@@ -74,7 +74,7 @@ public class ObjectMetadataAPI : MonoBehaviour
 	{
 		if (enableDetailedLogging)
 		{
-			Debug.Log($"[Metadata] Requesting metadata for: {objectName}");
+			//Debug.Log($"[Metadata] Requesting metadata for: {objectName}");
 		}
 
 		// Check cache first
@@ -82,7 +82,7 @@ public class ObjectMetadataAPI : MonoBehaviour
 		{
 			if (enableDetailedLogging)
 			{
-				Debug.Log($"[Metadata] Found in cache for {objectName}: {cachedMetadata.emoji}");
+				//Debug.Log($"[Metadata] Found in cache for {objectName}: {cachedMetadata.emoji}");
 			}
 			return cachedMetadata;
 		}
@@ -91,7 +91,7 @@ public class ObjectMetadataAPI : MonoBehaviour
 		{
 			if (enableDetailedLogging)
 			{
-				Debug.Log("[Metadata] Using offline defaults");
+				//Debug.Log("[Metadata] Using offline defaults");
 			}
 			return CreateAndCacheDefaultMetadata(objectName);
 		}
@@ -99,13 +99,13 @@ public class ObjectMetadataAPI : MonoBehaviour
 		try
 		{
 			string url = BASE_URL + Uri.EscapeDataString(objectName);
-			Debug.Log($"[Metadata] Fetching from URL: {url}");
+			//Debug.Log($"[Metadata] Fetching from URL: {url}");
 
 			using (UnityWebRequest request = UnityWebRequest.Get(url))
 			{
 				request.timeout = Mathf.RoundToInt(requestTimeout);
 
-				Debug.Log($"[Metadata] Sending request for {objectName}...");
+				//Debug.Log($"[Metadata] Sending request for {objectName}...");
 				var operation = request.SendWebRequest();
 
 				while (!operation.isDone)
@@ -131,7 +131,7 @@ public class ObjectMetadataAPI : MonoBehaviour
 				}
 
 				string jsonResponse = request.downloadHandler.text;
-				Debug.Log($"[Metadata] Received response for {objectName}: {jsonResponse}");
+				//Debug.Log($"[Metadata] Received response for {objectName}: {jsonResponse}");
 
 				try
 				{
@@ -149,7 +149,7 @@ public class ObjectMetadataAPI : MonoBehaviour
 						return CreateAndCacheDefaultMetadata(objectName);
 					}
 
-					Debug.Log($"[Metadata] Successfully parsed metadata for {objectName}. Emoji: {metadata.emoji}");
+					//Debug.Log($"[Metadata] Successfully parsed metadata for {objectName}. Emoji: {metadata.emoji}");
 					cache[objectName] = metadata;
 					return metadata;
 				}

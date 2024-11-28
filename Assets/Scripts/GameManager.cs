@@ -246,6 +246,11 @@ public class GameManager : MonoBehaviour
                 // Get random word from our list
                 string randomWord = activeWords[Random.Range(0, activeWords.Count)];
                 SpawnElement(randomWord, spawnPosition);
+                //randomOffset = Random.insideUnitSphere * spawnRadius;
+                //randomOffset.y = 0; // Keep height consistent
+                //spawnPosition = basePosition + randomOffset;
+                //spawnPosition.y = spawnHeight;
+                //SpawnElement(randomWord, spawnPosition);
                 itemsSpawned++;
                 yield return new WaitForSeconds(0.1f);
             }
@@ -336,7 +341,7 @@ public class GameManager : MonoBehaviour
     {
         return (pointA + pointB) / 2;
     }
-
+    public GameObject GetLLementPrefab() { return elementPrefab; }
     public float SizeConverter(float sizeFactor)
     {
         return sizeFactor / 4f;

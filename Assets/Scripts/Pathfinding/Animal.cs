@@ -3,7 +3,7 @@ using UnityEngine;
 using Pathfinding;
 
 [RequireComponent(typeof(Seeker), typeof(CharacterController))]
-public class AnimalAI : MonoBehaviour
+public class Animal : MonoBehaviour
 {
     // Movement parameters
     [SerializeField] private float baseSpeed = 1.5f; // Base speed of the animal
@@ -34,9 +34,12 @@ public class AnimalAI : MonoBehaviour
     private State currentState = State.Idle;
     private bool isTransitioning = false;
 
+    private HealthSystem healthSystem;
+
     private void Start() {
         seeker = GetComponent<Seeker>();
         characterController = GetComponent<CharacterController>();
+        healthSystem = GetComponent<HealthSystem>();
 
         // Randomize target speed slightly for each animal
         targetSpeed = baseSpeed + Random.Range(-speedVariation, speedVariation);

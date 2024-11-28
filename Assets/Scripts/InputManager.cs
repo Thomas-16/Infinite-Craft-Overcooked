@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -6,15 +7,46 @@ public class InputManager : MonoBehaviour
 {
 	public static InputManager Instance { get; private set; }
 	public PlayerInputActions inputActions;
+	public event Action<int> OnNumberKeyPressed;
+	public event Action<int> OnScrollItemSwitch;
 
-	private void Awake()
+    private KeyCode[] numKeyCodes = {
+        KeyCode.Alpha1,
+        KeyCode.Alpha2,
+        KeyCode.Alpha3,
+        KeyCode.Alpha4,
+        KeyCode.Alpha5,
+        KeyCode.Alpha6,
+        KeyCode.Alpha7,
+        KeyCode.Alpha8,
+        KeyCode.Alpha9,
+    };
+
+    private void Awake()
 	{
 		Instance = this;
 		inputActions = new PlayerInputActions();
 		inputActions.Enable();
 	}
+    
+    private void Update() {
+		HandleNumKeyInput();
+		HandleScrollItemSwitch();
+    }
+    //TODO: refactor to use new Input system
+    private void HandleNumKeyInput() {
+        for (int i = 0; i < numKeyCodes.Length; i++) {
+            if (Input.GetKeyDown(numKeyCodes[i])) {
+                OnNumberKeyPressed?.Invoke(i + 1);
+                return;
+            }
+        }
+    }
+    private void HandleScrollItemSwitch() {
+        OnScrollItemSwitch?.Invoke((int)-Input.mouseScrollDelta.y);
+    }
 
-	public Vector2 GetMovementInputVector()
+    public Vector2 GetMovementInputVector()
 	{
 		return inputActions.Player.Movement.ReadValue<Vector2>();
 	}

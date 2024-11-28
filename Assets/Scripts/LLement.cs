@@ -81,7 +81,7 @@ public class LLement : PickupableObject
 			if (emojiRenderer != null)
 			{
 				emojiRenderer.gameObject.SetActive(true);
-				Debug.Log($"[LLement] Found existing emoji renderer: {emojiRenderer.gameObject.name}, Active: {emojiRenderer.gameObject.activeInHierarchy}");
+				//Debug.Log($"[LLement] Found existing emoji renderer: {emojiRenderer.gameObject.name}, Active: {emojiRenderer.gameObject.activeInHierarchy}");
 			}
 			return;
 		}
@@ -100,7 +100,7 @@ public class LLement : PickupableObject
 		SpriteRenderer spriteRenderer = emojiObj.AddComponent<SpriteRenderer>();
 		spriteRenderer.sortingOrder = 1;
 		emojiRenderer = spriteRenderer;
-		Debug.Log($"[LLement] Created new emoji renderer: {emojiObj.name}, Active: {emojiObj.activeInHierarchy}");
+		//Debug.Log($"[LLement] Created new emoji renderer: {emojiObj.name}, Active: {emojiObj.activeInHierarchy}");
 	}
 
 	private void SetupUI()
@@ -149,7 +149,7 @@ public class LLement : PickupableObject
 
 	public async void SetElementName(string elementName)
     {
-        Debug.Log($"[LLement] Setting element name to: {elementName}");
+        //Debug.Log($"[LLement] Setting element name to: {elementName}");
         ElementName = elementName;
         
         if (namePanel != null)
@@ -172,7 +172,7 @@ public class LLement : PickupableObject
                         {
                             emojiRenderer.gameObject.SetActive(true);
                             emojiRenderer.sprite = emojiSprite;
-                            Debug.Log($"[LLement] Set sprite for {elementName}, Renderer active: {emojiRenderer.gameObject.activeInHierarchy}");
+                            //Debug.Log($"[LLement] Set sprite for {elementName}, Renderer active: {emojiRenderer.gameObject.activeInHierarchy}");
                         }
                         else
                         {
@@ -194,6 +194,18 @@ public class LLement : PickupableObject
             Debug.LogError($"[LLement] Error setting element name {elementName}: {e.Message}");
         }
     }
+	public void SetElementNameAndSprite(string elementName, Sprite elementSprite) {
+        ElementName = elementName;
+
+        if (namePanel != null) {
+            namePanel.SetText(elementName);
+        }
+        emojiRenderer.gameObject.SetActive(true);
+        emojiRenderer.sprite = elementSprite;
+
+        ApplyMetadataScale();
+        AdjustSpriteToCollider();
+    }
 
 	private void ApplyMetadataScale()
 	{
@@ -214,7 +226,7 @@ public class LLement : PickupableObject
 		if (!emojiRenderer.gameObject.activeInHierarchy)
 		{
 			emojiRenderer.gameObject.SetActive(true);
-			Debug.Log($"[LLement] Activated emoji renderer in AdjustSpriteToCollider");
+			//Debug.Log($"[LLement] Activated emoji renderer in AdjustSpriteToCollider");
 		}
 
 		Vector3 colliderSize = boxCollider.size;
@@ -228,7 +240,7 @@ public class LLement : PickupableObject
 		float scaleFactor = targetSize / maxSpriteSize;
 
 		emojiRenderer.transform.localScale = Vector3.one * scaleFactor;
-		Debug.Log($"[LLement] Adjusted sprite scale to {scaleFactor}, Renderer active: {emojiRenderer.gameObject.activeInHierarchy}");
+		//Debug.Log($"[LLement] Adjusted sprite scale to {scaleFactor}, Renderer active: {emojiRenderer.gameObject.activeInHierarchy}");
 	}
 
 	private void OnMouseEnter()
@@ -295,7 +307,7 @@ public class LLement : PickupableObject
 			if (emojiRenderer != null)
 			{
 				emojiRenderer.gameObject.SetActive(true);
-				Debug.Log($"[LLement] Found and activated emoji renderer in OnValidate");
+				//Debug.Log($"[LLement] Found and activated emoji renderer in OnValidate");
 			}
 		}
 
@@ -318,4 +330,9 @@ public class LLement : PickupableObject
 			UIManager.Instance.RemoveWorldPositionedPanel(transform);
 		}
 	}
+	public SpriteRenderer GetEmojiRenderer() { return emojiRenderer; }
+
+	public void UIPanelSetActive(bool active) {
+		namePanel.ShouldBeActive = active;
+    }
 }

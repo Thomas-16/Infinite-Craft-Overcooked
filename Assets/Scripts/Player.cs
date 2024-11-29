@@ -52,7 +52,11 @@ public class Player : MonoBehaviour
 	[SerializeField] private UIPanel throwPowerBarPrefab;
 	[SerializeField] private float throwBarOffset = 1.75f;
 
-	private float pickupInputStartTime;
+	[Header("Melee Attack Settings")]
+	[SerializeField] private UIPanel attackCooldownBarPrefab;
+    [SerializeField] private float attackCooldownDuration = 1.0f; // Duration of the attack cooldown
+
+    private float pickupInputStartTime;
 	private bool pickupInputActive = false;
 
     private PickupableObject hoveringObject;
@@ -72,6 +76,7 @@ public class Player : MonoBehaviour
 	private float defaultWalkSpeed;
 	private bool isSprinting;
 	private SprintBar sprintBar;
+	private AttackCooldownBar attackCooldownBar;
 	private UIPanel sprintBarPanel;
 	private PlayerInventorySystem playerInventorySystem;
 	private HealthSystem healthSystem;
@@ -80,7 +85,8 @@ public class Player : MonoBehaviour
 	[SerializeField] private float currentHungerResource;
 	[SerializeField] private float currentSprintResource;
 	private float sprintRecoveryTimer;
-	private bool canSprint => currentSprintResource > 0f;
+    private float attackCooldownRemaining = 0f; // Tracks the remaining cooldown time
+    private bool canSprint => currentSprintResource > 0f;
 	protected virtual void Awake()
 	{
 		_character = GetComponent<Character>();
@@ -109,9 +115,10 @@ public class Player : MonoBehaviour
 		InputManager.Instance.inputActions.Player.Sprint.canceled += OnSprintReleased;
 		InputManager.Instance.inputActions.Player.Attack.performed += OnAttackPerformed;
 
-		SetupNametag();
+		//SetupNametag();
 		SetupSprintBar();
 		SetupThrowUI();
+		SetupAttackCooldownBar();
 
 		defaultWalkSpeed = _character.maxWalkSpeed;
 		currentSprintResource = maxSprintResource;
@@ -169,6 +176,17 @@ public class Player : MonoBehaviour
 			}
 		}
 	}
+	private void SetupAttackCooldownBar() {
+		if(UIManager.Instance != null) {
+			UIPanel panel = UIManager.Instance.CreateWorldPositionedPanel(
+				transform,
+				attackCooldownBarPrefab,
+				sprintBarTransformReference.position - transform.position - new Vector3(0f, .2f, 0f)
+			);
+
+			attackCooldownBar = panel.GetComponent<AttackCooldownBar>();
+		}
+	}
 
 /*
 	protected virtual void Update()
@@ -200,8 +218,27 @@ public class Player : MonoBehaviour
         {
             UpdateThrowCharge();
         }
+		UpdateAttackCooldown();
     }
+	private void UpdateAttackCooldown() {
+        // Update the cooldown timer
+        if (attackCooldownRemaining > 0) {
+            attackCooldownRemaining -= Time.deltaTime;
 
+            // Ensure the cooldown doesn't go below zero
+            attackCooldownRemaining = Mathf.Max(attackCooldownRemaining, 0f);
+
+            // Update the cooldown bar
+            float fillAmount = 1f - (attackCooldownRemaining / attackCooldownDuration);
+			if(fillAmount <= 0.001f) {
+				attackCooldownBar.gameObject.SetActive(false);
+			}
+			if(fillAmount >= 0.999f) {
+				attackCooldownBar.gameObject.SetActive(true);
+			}
+            attackCooldownBar.UpdateBar(fillAmount);
+        }
+    }
 	private void HandleSprintResource()
 	{
 		if (isSprinting && canSprint)
@@ -450,6 +487,16 @@ public class Player : MonoBehaviour
     }
 
 	private void OnAttackPerformed(InputAction.CallbackContext context) {
+        // Check if the cooldown has finished
+        if (attackCooldownRemaining > 0) {
+            Debug.Log("Attack is on cooldown!");
+            return;
+        }
+
+        // Reset the cooldown
+        attackCooldownRemaining = attackCooldownDuration;
+
+        // Perform the attack
         RaycastHit[] raycastHits = coneCastHelper.ConeCast(transform.position + new Vector3(0, 1f, 0f), transform.forward, 2f);
         if (debugVisualizeRays) {
             foreach (var hit in raycastHits) {
@@ -458,18 +505,18 @@ public class Player : MonoBehaviour
         }
 
         foreach (RaycastHit hit in raycastHits) {
-			Animal animalHit = hit.collider.GetComponentInParent<Animal>();
-			Zombie zombieHit = hit.collider.GetComponentInParent<Zombie>();
-			if(animalHit != null) {
-				animalHit.Damage(10f);
-				Debug.Log("attacked animal");
-				break;
-			}
-			else if(zombieHit != null) {
-				zombieHit.Damage(10f);
-				Debug.Log("attacked zombie");
-				break;
-			}
+            Animal animalHit = hit.collider.GetComponentInParent<Animal>();
+            Zombie zombieHit = hit.collider.GetComponentInParent<Zombie>();
+            if (animalHit != null) {
+                animalHit.Damage(10f);
+                Debug.Log("attacked animal");
+                break;
+            }
+            else if (zombieHit != null) {
+                zombieHit.Damage(10f);
+                Debug.Log("attacked zombie");
+                break;
+            }
         }
     }
 

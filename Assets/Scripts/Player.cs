@@ -102,6 +102,7 @@ public class Player : MonoBehaviour
 		InputManager.Instance.inputActions.Player.Jump.canceled += OnJumpReleased;
 		InputManager.Instance.inputActions.Player.Sprint.started += OnSprintPressed;
 		InputManager.Instance.inputActions.Player.Sprint.canceled += OnSprintReleased;
+		InputManager.Instance.inputActions.Player.Attack.performed += OnAttackPerformed;
 
 		SetupNametag();
 		SetupSprintBar();
@@ -441,7 +442,31 @@ public class Player : MonoBehaviour
         }
     }
 
-	public void Damage(float damage) {
+	private void OnAttackPerformed(InputAction.CallbackContext context) {
+        RaycastHit[] raycastHits = coneCastHelper.ConeCast(transform.position + new Vector3(0, 1f, 0f), transform.forward, 2f);
+        if (debugVisualizeRays) {
+            foreach (var hit in raycastHits) {
+                Debug.DrawLine(lookingRaycastPositionTransform.position, hit.point, Color.red);
+            }
+        }
+
+        foreach (RaycastHit hit in raycastHits) {
+			Animal animalHit = hit.collider.GetComponentInParent<Animal>();
+			Zombie zombieHit = hit.collider.GetComponentInParent<Zombie>();
+			if(animalHit != null) {
+				animalHit.Damage(10f);
+				Debug.Log("attacked animal");
+				break;
+			}
+			else if(zombieHit != null) {
+				zombieHit.Damage(10f);
+				Debug.Log("attacked zombie");
+				break;
+			}
+        }
+    }
+
+    public void Damage(float damage) {
 		healthSystem.Damage(damage);
 	}
 	private void OnSprintPressed(InputAction.CallbackContext context)

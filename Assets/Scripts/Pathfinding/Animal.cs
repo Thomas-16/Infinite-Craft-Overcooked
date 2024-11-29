@@ -48,6 +48,10 @@ public class Animal : MonoBehaviour
         StartCoroutine(WanderBehavior());
     }
 
+    public void Damage(float damage) {
+        healthSystem.Damage(damage);
+    }
+
     private IEnumerator WanderBehavior() {
         while (true) {
             if (currentState == State.Idle && !isTransitioning) {

@@ -29,21 +29,7 @@ public class UIPanel : MonoBehaviour
 		{
 			textRectTransform = textDisplay.GetComponent<RectTransform>();
 		}
-		ValidateComponents();
 		transform.SetAsFirstSibling();
-	}
-
-	private void ValidateComponents()
-	{
-		if (backgroundPanel == null)
-		{
-			Debug.LogError($"Background panel not assigned on {gameObject.name}!", this);
-		}
-
-		if (textDisplay == null)
-		{
-			Debug.LogError($"Text display not assigned on {gameObject.name}!", this);
-		}
 	}
 
 	public void SetText(string text)

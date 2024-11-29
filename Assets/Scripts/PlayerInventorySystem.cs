@@ -34,6 +34,7 @@ public class PlayerInventorySystem : MonoBehaviour
             hotbarInventoryItemSlotsUI[i].IsHotbar = true;
             hotbarInventoryItemSlotsUI[i].HotbarSlotIndex = i;
         }
+        inventoryUI.SetActive(isInventoryOpen);
     }
     private void Start() {
         InputManager.Instance.OnNumberKeyPressed += OnNumberKeyPressedHandler;

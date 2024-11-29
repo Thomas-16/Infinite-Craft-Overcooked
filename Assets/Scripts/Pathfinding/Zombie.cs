@@ -70,7 +70,9 @@ public class Zombie : MonoBehaviour
         // Check if the zombie can attack the player
         CheckAttackPlayer();
     }
-
+    public void Damage(float damage) {
+        healthSystem.Damage(damage);
+    }
     private IEnumerator IdleBehavior() {
         while (currentState == ZombieState.Idle) {
             if (isIdleMoving) {

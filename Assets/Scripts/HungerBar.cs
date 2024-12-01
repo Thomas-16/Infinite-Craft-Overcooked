@@ -24,7 +24,7 @@ public class HungerBar : MonoBehaviour
 
     public void UpdateHungerBar(float fillAmount) {
         if (fillBar != null) {
-            UnityEngine.Debug.Log("Hunger bar amt: " + fillAmount);
+            //UnityEngine.Debug.Log("Hunger bar amt: " + fillAmount);
             fillBar.fillAmount = fillAmount;
         }
     }

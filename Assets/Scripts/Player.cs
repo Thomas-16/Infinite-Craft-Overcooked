@@ -434,6 +434,7 @@ public class Player : MonoBehaviour
 
 				if(pickupableObject.CanBePickedup()) {
                     playerInventorySystem.AddItem(pickupableObject);
+					//Debug.Log((pickupableObject as LLement).GetScale());
                 } else {
                     hoveringObject = pickupableObject;
                 }
@@ -507,13 +508,14 @@ public class Player : MonoBehaviour
         foreach (RaycastHit hit in raycastHits) {
             Animal animalHit = hit.collider.GetComponentInParent<Animal>();
             Zombie zombieHit = hit.collider.GetComponentInParent<Zombie>();
+			float itemScale = (playerInventorySystem.GetCurrentHoldingItem() as LLement).GetScale();
             if (animalHit != null) {
-                animalHit.Damage(10f);
+                animalHit.Damage(4f * itemScale);
                 Debug.Log("attacked animal");
                 break;
             }
             else if (zombieHit != null) {
-                zombieHit.Damage(10f);
+                zombieHit.Damage(4f * itemScale);
                 Debug.Log("attacked zombie");
                 break;
             }

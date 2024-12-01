@@ -7,6 +7,8 @@ public class HealthSystem : MonoBehaviour
 {
     public readonly float MAX_HEALTH = 100f;
 
+    public event Action OnDeath;
+
     private float health;
     private UIPanel healthBarPanel;
     private HealthBar healthBar;
@@ -24,8 +26,10 @@ public class HealthSystem : MonoBehaviour
 
     public void Damage(float damage) {
         health -= damage;
-        health = Mathf.Clamp(health, 0, MAX_HEALTH);
-
+        if (health <= 0) {
+            OnDeath?.Invoke();
+            health = 0f;
+        }
         healthBar.UpdateHealthBar(health / MAX_HEALTH);
     }
     private void SetupHealthBar() {

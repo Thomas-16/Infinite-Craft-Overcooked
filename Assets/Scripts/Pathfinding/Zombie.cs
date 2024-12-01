@@ -49,8 +49,9 @@ public class Zombie : MonoBehaviour
 
         // Start in idle state
         StartCoroutine(IdleBehavior());
-    }
 
+        healthSystem.OnDeath += OnDeathHandler;
+    }
     void Update() {
         switch (currentState) {
             case ZombieState.Idle:
@@ -72,6 +73,9 @@ public class Zombie : MonoBehaviour
     }
     public void Damage(float damage) {
         healthSystem.Damage(damage);
+    }
+    private void OnDeathHandler() {
+        Destroy(gameObject);
     }
     private IEnumerator IdleBehavior() {
         while (currentState == ZombieState.Idle) {

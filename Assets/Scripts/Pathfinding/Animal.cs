@@ -46,12 +46,16 @@ public class Animal : MonoBehaviour
 
         // Start the wandering behavior
         StartCoroutine(WanderBehavior());
+
+        healthSystem.OnDeath += OnDeathHandler;
     }
 
     public void Damage(float damage) {
         healthSystem.Damage(damage);
     }
-
+    private void OnDeathHandler() {
+        Destroy(gameObject);
+    }
     private IEnumerator WanderBehavior() {
         while (true) {
             if (currentState == State.Idle && !isTransitioning) {

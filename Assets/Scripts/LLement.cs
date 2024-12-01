@@ -1,6 +1,8 @@
 using UnityEngine;
 using System.Collections;
 using System;
+using Microsoft.Win32.SafeHandles;
+using System.Security.Cryptography;
 
 public class LLement : PickupableObject
 {
@@ -38,6 +40,7 @@ public class LLement : PickupableObject
 	private float targetAlpha = 0f;
 	private Vector3 originalScale;
 	private UIPanel namePanel;
+	private float lastFrameVelocity;
 
 	public GameObject visuals;
 
@@ -132,8 +135,11 @@ public class LLement : PickupableObject
             UpdateUIAlpha(currentAlpha);
         }
     }
+    private void LateUpdate() {
+		lastFrameVelocity = GetComponent<Rigidbody>().velocity.magnitude;
+    }
 
-	private void UpdateUIAlpha(float alpha)
+    private void UpdateUIAlpha(float alpha)
 	{
 		if (namePanel != null)
 		{
@@ -214,8 +220,8 @@ public class LLement : PickupableObject
 		boxCollider.size = Vector3.one;
 		transform.localScale = Vector3.one * GameManager.Instance.SizeConverter(metadata.scale);
 	}
-
-	private void AdjustSpriteToCollider()
+    public float GetScale() => metadata.scale;
+    private void AdjustSpriteToCollider()
 	{
 		if (emojiRenderer == null || emojiRenderer.sprite == null || boxCollider == null)
 		{
@@ -274,6 +280,23 @@ public class LLement : PickupableObject
 
 	private void OnCollisionEnter(Collision collision)
 	{
+		GameObject mobHit = collision.gameObject;
+		Zombie zombieHit = mobHit.GetComponentInParent<Zombie>();
+		Animal animalHit = mobHit.GetComponentInParent<Animal>();
+
+        if (zombieHit != null || animalHit != null) {
+			//Debug.Log(lastFrameVelocity);
+			float damage = GetScale() * lastFrameVelocity * .6f;
+			Debug.Log("damage delt: " + damage);
+
+            if (zombieHit != null) {
+				zombieHit.Damage(damage);
+			} else {
+				animalHit.Damage(damage);
+			}
+			//mobHit.GetComponent<Rigidbody>().AddExplosionForce(damage * 50f, collision.contacts[0].point, .5f);
+		}
+
 		if (!canTriggerMerge || !hasBeenHeld) return;
 
 		LLement otherElement = collision.gameObject.GetComponent<LLement>();
@@ -290,38 +313,38 @@ public class LLement : PickupableObject
 		}
 	}
 
-	private void OnValidate()
-	{
-		if (boxCollider == null)
-		{
-			boxCollider = GetComponent<BoxCollider>();
-			if (boxCollider == null)
-			{
-				boxCollider = gameObject.AddComponent<BoxCollider>();
-			}
-		}
+	//private void OnValidate()
+	//{
+	//	if (boxCollider == null)
+	//	{
+	//		boxCollider = GetComponent<BoxCollider>();
+	//		if (boxCollider == null)
+	//		{
+	//			boxCollider = gameObject.AddComponent<BoxCollider>();
+	//		}
+	//	}
 
-		if (emojiRenderer == null)
-		{
-			emojiRenderer = GetComponentInChildren<SpriteRenderer>(true);
-			if (emojiRenderer != null)
-			{
-				emojiRenderer.gameObject.SetActive(true);
-				//Debug.Log($"[LLement] Found and activated emoji renderer in OnValidate");
-			}
-		}
+	//	if (emojiRenderer == null)
+	//	{
+	//		emojiRenderer = GetComponentInChildren<SpriteRenderer>(true);
+	//		if (emojiRenderer != null)
+	//		{
+	//			emojiRenderer.gameObject.SetActive(true);
+	//			//Debug.Log($"[LLement] Found and activated emoji renderer in OnValidate");
+	//		}
+	//	}
 
-		if (visuals == null || emojiRenderer == null)
-		{
-			SetupVisuals();
-		}
+	//	if (visuals == null || emojiRenderer == null)
+	//	{
+	//		SetupVisuals();
+	//	}
 
-		if (metadata != null)
-		{
-			ApplyMetadataScale();
-			AdjustSpriteToCollider();
-		}
-	}
+	//	if (metadata != null)
+	//	{
+	//		ApplyMetadataScale();
+	//		AdjustSpriteToCollider();
+	//	}
+	//}
 
 	private void OnDestroy()
 	{

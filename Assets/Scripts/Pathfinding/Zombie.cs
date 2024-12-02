@@ -7,6 +7,10 @@ public enum ZombieState { Idle, Chase }
 [RequireComponent(typeof(Seeker), typeof(CharacterController))]
 public class Zombie : MonoBehaviour
 {
+
+    [Header("Food Parameters")]
+    [SerializeField] private GameObject foodPrefab;
+
     [Header("Movement Parameters")]
     [SerializeField] private float speed = 2f;
     [SerializeField] private float chaseUpdateInterval = 1f;
@@ -75,6 +79,8 @@ public class Zombie : MonoBehaviour
         healthSystem.Damage(damage);
     }
     private void OnDeathHandler() {
+        // drop food too
+        Instantiate(foodPrefab, this.transform.position, Quaternion.identity).GetComponent<LLement>();
         Destroy(gameObject);
     }
     private IEnumerator IdleBehavior() {

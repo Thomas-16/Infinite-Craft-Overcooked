@@ -529,6 +529,20 @@ public class Player : MonoBehaviour
     currentHungerResource = Mathf.Max(0f, currentHungerResource - (starveRate * Time.deltaTime));
     hungerSystem.Starve(currentHungerResource);
   }
+
+  private void OnTriggerEnter(Collider other)
+    {
+        if (other.gameObject.CompareTag("Food"))
+        {
+            // disable the food object
+            other.gameObject.SetActive(false);
+            // Increase hunger by 20%
+            currentHungerResource = Mathf.Min(
+              maxHungerResource,
+              currentHungerResource + (0.2f * maxHungerResource)
+            );
+        }
+    }
 	private void OnSprintPressed(InputAction.CallbackContext context)
 	{
 		if (_character.IsWalking() && !_character.IsCrouched() && canSprint)
